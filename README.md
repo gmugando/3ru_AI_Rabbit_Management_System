@@ -2,6 +2,8 @@
 
 A comprehensive rabbit management system built with Vue.js and Supabase, featuring AI-powered insights and financial management capabilities.
 
+## For Learning Purposes
+
 ## Features
 
 ### Financial Management
