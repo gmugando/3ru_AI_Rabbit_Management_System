@@ -27,5 +27,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Doc folder
+# Documentation folders
+/docs/
 /doc/
