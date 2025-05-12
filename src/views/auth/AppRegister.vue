@@ -251,15 +251,13 @@ export default {
 
         if (profileError) throw profileError
 
-        // Store user data in Vuex
-        store.commit('setUser', {
-          id: user.id,
-          email: user.email,
-          name: `${form.firstName} ${form.lastName}`,
-          role: userType.value === 'tenant' ? 'TENANT_ADMIN' : 'USER'
+        // Show success message and redirect to login
+        store.commit('setNotification', {
+          type: 'success',
+          message: 'Registration successful! Please check your email to verify your account.'
         })
 
-        router.push('/dashboard')
+        router.push('/login')
       } catch (error) {
         errorMessage.value = error.message
       } finally {

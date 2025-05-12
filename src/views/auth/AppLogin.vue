@@ -85,6 +85,13 @@ export default {
 
         if (error) throw error
 
+        // Check if email is verified
+        if (!user.email_confirmed_at) {
+          // Sign out the user since they're not verified
+          await supabase.auth.signOut()
+          throw new Error('Please verify your email before logging in. Check your inbox for the verification link.')
+        }
+
         // Get user profile and role from profiles table
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
