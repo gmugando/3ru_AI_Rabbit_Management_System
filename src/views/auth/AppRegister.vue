@@ -159,6 +159,7 @@
           </router-link>
         </p>
       </form>
+      <AppInfo />
     </div>
   </div>
 </template>
@@ -168,9 +169,13 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { supabase } from '@/supabase'
+import AppInfo from '@/components/AppInfo.vue'
 
 export default {
   name: 'AppRegister',
+  components: {
+    AppInfo
+  },
   setup() {
     const router = useRouter()
     const store = useStore()

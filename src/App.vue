@@ -83,6 +83,7 @@
               </router-link>
             </div>
           </div>
+          <AppInfo class="sidebar-info" />
         </nav>
         <div class="main-content">
           <header class="topbar">
@@ -119,9 +120,13 @@ import { ref, computed } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import AppInfo from '@/components/AppInfo.vue'
 
 export default {
   name: 'App',
+  components: {
+    AppInfo
+  },
   setup() {
     const store = useStore()
     const router = useRouter()
@@ -394,5 +399,24 @@ export default {
   .sidebar-overlay {
     display: none !important;
   }
+}
+
+.sidebar-info {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-info :deep(.app-info) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sidebar-info :deep(.version) {
+  font-size: 0.75rem;
+}
+
+.sidebar-info :deep(.copyright) {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
 }
 </style>

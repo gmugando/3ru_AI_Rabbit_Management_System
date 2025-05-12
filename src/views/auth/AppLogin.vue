@@ -53,6 +53,7 @@
           </router-link>
         </p>
       </form>
+      <AppInfo />
     </div>
   </div>
 </template>
@@ -62,9 +63,13 @@ import { ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import AppInfo from '@/components/AppInfo.vue'
 
 export default {
   name: 'AppLogin',
+  components: {
+    AppInfo
+  },
   setup() {
     const store = useStore()
     const router = useRouter()
