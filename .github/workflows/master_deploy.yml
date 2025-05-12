@@ -31,9 +31,13 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/  # This points to the built Vue.js files
           server-dir: /public_html/
           exclude: |
             **/.git**
             **/.git*/**
             **/node_modules/**
             **/.**
+            package.json
+            package-lock.json
+            README.md
