@@ -11,7 +11,7 @@ import { computed } from 'vue'
 export default {
   name: 'AppInfo',
   setup() {
-    const version = '1.0.0'
+    const version = '1.0.1'
     const currentYear = computed(() => new Date().getFullYear())
 
     return {
