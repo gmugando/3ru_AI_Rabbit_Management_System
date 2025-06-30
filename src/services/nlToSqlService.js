@@ -135,7 +135,6 @@ class NaturalLanguageQueryService {
     const systemPrompt = this.buildSystemPrompt()
     
     try {
-      console.log('openaiApiKey', this.openaiApiKey)
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {

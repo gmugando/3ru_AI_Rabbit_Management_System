@@ -248,12 +248,7 @@ export default {
               status: 'active'
             }
           ])
-
-        console.log(roleData)
-        console.log(user)
-        console.log(form)
-        console.log(profileError)
-
+          
         if (profileError) throw profileError
 
         // Show success message and redirect to login
