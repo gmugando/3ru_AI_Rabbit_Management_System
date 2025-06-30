@@ -24,6 +24,10 @@ jobs:
 
       - name: Build App 🏗️
         run: npm run build
+        env:
+          VUE_APP_SUPABASE_URL: ${{ secrets.VUE_APP_SUPABASE_URL }}
+          VUE_APP_SUPABASE_ANON_KEY: ${{ secrets.VUE_APP_SUPABASE_ANON_KEY }}
+          VUE_APP_OPENAI_API_KEY: ${{ secrets.VUE_APP_OPENAI_API_KEY }}
 
       - name: Upload to cPanel 📂
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
