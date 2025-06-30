@@ -255,7 +255,6 @@ export default {
         // Ensure result is properly formatted (fallback safety)
         result = this.nlService.ensureFormatted(result)
         
-        console.log("Enhanced result", result)
         this.currentResult = result
         
         // Add to history
