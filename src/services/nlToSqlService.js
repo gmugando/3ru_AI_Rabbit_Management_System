@@ -4,7 +4,6 @@ class NaturalLanguageQueryService {
   constructor(supabaseUrl, supabaseKey, openaiApiKey) {
     this.supabase = createClient(supabaseUrl, supabaseKey)
     this.openaiApiKey = openaiApiKey
-    console.log('openaiApiKey', openaiApiKey)
     this.schema = null
   }
 
