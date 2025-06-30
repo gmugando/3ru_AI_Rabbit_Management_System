@@ -29,6 +29,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/farm-chat',
+    name: 'FarmChat',
+    component: () => import('@/views/ai/FarmChat.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/rabbits',
     name: 'Rabbits',
     component: () => import('@/views/rabbits/RabbitList.vue'),

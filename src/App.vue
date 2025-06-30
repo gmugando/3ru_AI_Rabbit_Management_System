@@ -48,6 +48,15 @@
             </div>
 
             <div class="menu-section">
+              <span class="menu-section-text">AI Chat</span>
+              <router-link to="/farm-chat" class="menu-item">
+                <i class="pi pi-heart"></i>
+                <span>Farm Chat</span>
+              </router-link>
+            </div>
+
+
+            <div class="menu-section">
               <span class="menu-section-text">BUSINESS</span>
               <router-link to="/finance" class="menu-item">
                 <i class="pi pi-dollar"></i>
