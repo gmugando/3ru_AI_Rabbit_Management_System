@@ -26,7 +26,7 @@
                 <span>Rabbits</span>
               </router-link>
               <router-link to="/breeding" class="menu-item">
-                <i class="pi pi-heart"></i>
+                <i class="pi pi-users"></i>
                 <span>Breeding</span>
               </router-link>
               <router-link to="/feeding" class="menu-item">
@@ -42,7 +42,7 @@
             <div class="menu-section">
               <span class="menu-section-text">HEALTH MANAGEMENT</span>
               <router-link to="/health-data" class="menu-item">
-                <i class="pi pi-heart"></i>
+                <i class="pi pi-shield"></i>
                 <span>Health Data Management</span>
               </router-link>
             </div>
@@ -50,8 +50,16 @@
             <div class="menu-section">
               <span class="menu-section-text">AI Chat</span>
               <router-link to="/farm-chat" class="menu-item">
-                <i class="pi pi-heart"></i>
+                <i class="pi pi-comments"></i>
                 <span>Farm Chat</span>
+              </router-link>
+            </div>
+            
+            <div class="menu-section">
+              <span class="menu-section-text">Documents</span>
+              <router-link to="/documents" class="menu-item">
+                <i class="pi pi-file-pdf"></i>
+                <span>Document Library</span>
               </router-link>
             </div>
 

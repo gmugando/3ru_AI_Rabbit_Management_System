@@ -147,6 +147,18 @@ const routes = [
     name: 'Settings',
     component: () => import('@/views/settings/AppSettings.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/preferences',
+    name: 'Preferences',
+    component: () => import('@/views/settings/AppPreferences.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/documents',
+    name: 'Documents',
+    component: () => import('@/views/documents/DocumentManagement.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
