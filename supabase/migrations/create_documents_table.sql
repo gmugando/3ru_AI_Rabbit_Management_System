@@ -194,4 +194,60 @@ returns json language sql security definer as $$
     )
     from public.documents
     where user_id = user_uuid;
+$$;
+
+-- Create alternative function to search all documents (including pending)
+create or replace function search_all_documents(
+    search_query text,
+    user_uuid uuid default auth.uid(),
+    category_filter text default null,
+    limit_count integer default 50
+)
+returns table (
+    id uuid,
+    title text,
+    description text,
+    category text,
+    tags text[],
+    filename text,
+    file_size bigint,
+    uploaded_at timestamp with time zone,
+    last_accessed timestamp with time zone,
+    is_favorite boolean,
+    processing_status text,
+    rank real
+) language sql security definer as $$
+    select 
+        d.id,
+        d.title,
+        d.description,
+        d.category,
+        d.tags,
+        d.filename,
+        d.file_size,
+        d.uploaded_at,
+        d.last_accessed,
+        d.is_favorite,
+        d.processing_status,
+        case 
+            when d.processing_status = 'completed' and search_query != '' 
+            then ts_rank(d.search_vector, plainto_tsquery('english', search_query))
+            else 0.5
+        end as rank
+    from public.documents d
+    where d.user_id = user_uuid
+        and d.is_archived = false
+        and (category_filter is null or d.category = category_filter)
+        and (
+            search_query = '' 
+            or d.processing_status != 'completed'
+            or d.search_vector @@ plainto_tsquery('english', search_query)
+            or d.title ilike '%' || search_query || '%'
+            or d.description ilike '%' || search_query || '%'
+        )
+    order by 
+        d.processing_status = 'completed' desc, -- Show completed documents first
+        case when search_query = '' then d.uploaded_at else null end desc,
+        case when search_query != '' and d.processing_status = 'completed' then ts_rank(d.search_vector, plainto_tsquery('english', search_query)) else null end desc
+    limit limit_count;
 $$; 

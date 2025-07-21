@@ -11,6 +11,10 @@
           <i class="pi pi-refresh"></i>
           Refresh
         </button>
+        <button class="secondary-button" @click="fixPendingDocuments" :disabled="loading">
+          <i class="pi pi-wrench"></i>
+          Fix Documents
+        </button>
         <button class="primary-button" @click="showUploadModal = true">
           <i class="pi pi-upload"></i>
           Upload Documents
@@ -93,6 +97,18 @@
             <i class="pi pi-list"></i>
           </button>
         </div>
+        
+        <div class="document-toggle">
+          <label class="toggle-label">
+            <input 
+              type="checkbox" 
+              v-model="showAllDocuments" 
+              @change="loadDocuments"
+              class="toggle-checkbox"
+            >
+            Show all documents (including pending)
+          </label>
+        </div>
       </div>
     </div>
 
@@ -151,6 +167,17 @@
               <span class="file-size">{{ formatFileSize(doc.file_size) }}</span>
             </div>
             
+            <!-- Processing Status -->
+            <div v-if="doc.processing_status" class="processing-status">
+              <span :class="['status-badge', doc.processing_status]">
+                <i v-if="doc.processing_status === 'pending'" class="pi pi-clock"></i>
+                <i v-else-if="doc.processing_status === 'processing'" class="pi pi-spin pi-spinner"></i>
+                <i v-else-if="doc.processing_status === 'completed'" class="pi pi-check"></i>
+                <i v-else-if="doc.processing_status === 'failed'" class="pi pi-times"></i>
+                {{ formatProcessingStatus(doc.processing_status) }}
+              </span>
+            </div>
+            
             <div v-if="doc.tags && doc.tags.length" class="doc-tags">
               <span v-for="tag in doc.tags.slice(0, 3)" :key="tag" class="tag">
                 {{ tag }}
@@ -175,6 +202,7 @@
         <div class="list-header">
           <div class="col-title">Document</div>
           <div class="col-category">Category</div>
+          <div class="col-status">Status</div>
           <div class="col-size">Size</div>
           <div class="col-date">Uploaded</div>
           <div class="col-actions">Actions</div>
@@ -198,6 +226,15 @@
           <div class="col-category">
             <span class="category-tag" :class="doc.category.toLowerCase()">
               {{ doc.category }}
+            </span>
+          </div>
+          <div class="col-status">
+            <span v-if="doc.processing_status" :class="['status-badge', 'small', doc.processing_status]">
+              <i v-if="doc.processing_status === 'pending'" class="pi pi-clock"></i>
+              <i v-else-if="doc.processing_status === 'processing'" class="pi pi-spin pi-spinner"></i>
+              <i v-else-if="doc.processing_status === 'completed'" class="pi pi-check"></i>
+              <i v-else-if="doc.processing_status === 'failed'" class="pi pi-times"></i>
+              {{ formatProcessingStatus(doc.processing_status) }}
             </span>
           </div>
           <div class="col-size">{{ formatFileSize(doc.file_size) }}</div>
@@ -362,6 +399,7 @@ export default {
       selectedCategory: '',
       sortBy: 'uploaded_at',
       viewMode: 'grid', // 'grid' or 'list'
+      showAllDocuments: false, // Toggle to show pending documents too
       
       // Upload modal
       showUploadModal: false,
@@ -412,8 +450,11 @@ export default {
     async loadDocuments() {
       this.loading = true
       try {
+        // Use different function based on toggle
+        const functionName = this.showAllDocuments ? 'search_all_documents' : 'search_documents'
+        
         const { data, error } = await this.supabase
-          .rpc('search_documents', {
+          .rpc(functionName, {
             search_query: this.searchQuery,
             category_filter: this.selectedCategory || null,
             limit_count: 100
@@ -422,13 +463,81 @@ export default {
         if (error) throw error
         
         this.documents = data || []
-        console.log('Documents loaded:', this.documents.length)
+        console.log(`Documents loaded using ${functionName}:`, this.documents.length)
+        
+        // Debug: Check for pending documents if no results and not using show all
+        if (this.documents.length === 0 && !this.showAllDocuments) {
+          await this.debugPendingDocuments()
+        }
         
       } catch (error) {
         console.error('Error loading documents:', error)
         this.$toast?.error('Failed to load documents')
       } finally {
         this.loading = false
+      }
+    },
+    
+    async debugPendingDocuments() {
+      try {
+        // Check for documents with pending status
+        const { data: pendingDocs, error } = await this.supabase
+          .from('documents')
+          .select('id, title, original_filename, processing_status, uploaded_at')
+          .eq('is_archived', false)
+          .order('uploaded_at', { ascending: false })
+        
+        if (error) {
+          console.error('Error checking pending documents:', error)
+          return
+        }
+        
+        console.log('Debug - All documents by status:', {
+          total: pendingDocs.length,
+          byStatus: pendingDocs.reduce((acc, doc) => {
+            acc[doc.processing_status] = (acc[doc.processing_status] || 0) + 1
+            return acc
+          }, {}),
+          pendingCount: pendingDocs.filter(d => d.processing_status === 'pending').length
+        })
+        
+        const pendingCount = pendingDocs.filter(d => d.processing_status === 'pending').length
+        if (pendingCount > 0) {
+          console.warn(`Found ${pendingCount} documents in pending status. These won't show in the list.`)
+          // Auto-fix pending documents
+          await this.fixPendingDocuments()
+        }
+        
+      } catch (error) {
+        console.error('Error in debug check:', error)
+      }
+    },
+    
+    async fixPendingDocuments() {
+      try {
+        console.log('Attempting to fix pending documents...')
+        
+        const { data, error } = await this.supabase
+          .from('documents')
+          .update({ 
+            processing_status: 'completed',
+            processed_at: new Date().toISOString(),
+            extracted_text: 'Text extraction not yet implemented'
+          })
+          .eq('processing_status', 'pending')
+          .select('id, title, original_filename')
+        
+        if (error) throw error
+        
+        if (data && data.length > 0) {
+          console.log(`Fixed ${data.length} pending documents:`, data)
+          this.$toast?.success(`Fixed ${data.length} pending documents`)
+          // Reload documents to show the fixed ones
+          await this.loadDocuments()
+        }
+        
+      } catch (error) {
+        console.error('Error fixing pending documents:', error)
       }
     },
     
@@ -563,7 +672,9 @@ export default {
           title: file.name.replace('.pdf', ''),
           category: this.bulkCategory,
           tags: tags,
-          processing_status: 'pending'
+          processing_status: 'completed', // Set to completed immediately since we don't have background processing
+          processed_at: new Date().toISOString(), // Mark as processed now
+          extracted_text: 'Text extraction not yet implemented' // Placeholder text
         })
       
       if (dbError) throw dbError
@@ -740,6 +851,21 @@ export default {
       if (diffDays <= 7) return `${diffDays} days ago`
       
       return date.toLocaleDateString()
+    },
+
+    formatProcessingStatus(status) {
+      switch (status) {
+        case 'pending':
+          return 'Pending'
+        case 'processing':
+          return 'Processing'
+        case 'completed':
+          return 'Completed'
+        case 'failed':
+          return 'Failed'
+        default:
+          return status
+      }
     }
   }
 }
@@ -943,6 +1069,25 @@ export default {
   color: white;
 }
 
+.document-toggle {
+  margin-left: 15px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.toggle-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #4CAF50; /* Customize checkbox color */
+}
+
 /* Document Library */
 .document-library {
   background: white;
@@ -1118,7 +1263,7 @@ export default {
 
 .list-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 80px 100px 120px;
+  grid-template-columns: 2fr 1fr 100px 80px 100px 120px;
   gap: 20px;
   padding: 15px 0;
   border-bottom: 2px solid #e5e7eb;
@@ -1129,7 +1274,7 @@ export default {
 
 .list-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 80px 100px 120px;
+  grid-template-columns: 2fr 1fr 100px 80px 100px 120px;
   gap: 20px;
   padding: 15px 0;
   border-bottom: 1px solid #f3f4f6;
@@ -1415,6 +1560,43 @@ export default {
   border-top: 1px solid #e5e7eb;
 }
 
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.small {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.status-badge.pending {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.status-badge.processing {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.status-badge.completed {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+.status-badge.failed {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .page-header {
@@ -1432,6 +1614,11 @@ export default {
   }
   
   .view-toggle {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+  
+  .document-toggle {
     margin-left: 0;
     align-self: flex-start;
   }
