@@ -46,10 +46,10 @@
                 <i class="pi pi-calendar"></i>
                 Schedule
               </button>
-              <button class="nav-item">
+              <router-link to="/preferences" class="nav-item">
                 <i class="pi pi-cog"></i>
                 Preferences
-              </button>
+              </router-link>
             </div>
           </div>
         </div>
@@ -306,6 +306,7 @@ export default {
   transition: all 0.3s ease;
   width: 100%;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item:hover {

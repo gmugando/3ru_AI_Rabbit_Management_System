@@ -50,8 +50,94 @@
             {{ currentResult.rowCount }} rows
           </span>
         </div>
-        <div v-if="currentResult.formattedSummary" class="result-summary">
-          {{ currentResult.formattedSummary }}
+        <div v-if="currentResult.formattedSummary || currentResult.combinedSummary" class="result-summary">
+          {{ currentResult.formattedSummary || currentResult.combinedSummary }}
+        </div>
+        
+        <!-- Multi-Agent Result Type Display -->
+        <div v-if="currentResult.agentsUsed || currentResult.queryType" class="agent-info">
+          <template v-if="currentResult.agentsUsed">
+            <span v-for="agent in currentResult.agentsUsed" 
+                  :key="agent" 
+                  class="agent-badge" 
+                  :class="agent + '_agent'">
+              {{ getAgentDisplayName(agent) }}
+            </span>
+          </template>
+          <span v-else-if="currentResult.queryType" 
+                class="agent-badge" 
+                :class="currentResult.queryType">
+            {{ getAgentTypeDisplay(currentResult.queryType) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- PDF Insights Display (for pdf_only or both queries) -->
+      <div v-if="currentResult.success && currentResult.answer" class="pdf-insights">
+        <h4><i class="pi pi-book"></i> Document Insights</h4>
+        <div class="insights-content">
+          {{ currentResult.answer }}
+        </div>
+        <div v-if="currentResult.sources && currentResult.sources.length" class="sources">
+          <strong>Sources:</strong>
+          <ul>
+            <li v-for="source in currentResult.sources" :key="source">{{ source }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Weather Display (for weather_only or both queries) -->
+      <div v-if="currentResult.success && currentResult.weather" class="weather-display">
+        <h4><i class="pi pi-sun"></i> Weather Analysis for {{ currentResult.location }}</h4>
+        
+        <!-- Current Weather -->
+        <div class="weather-current">
+          <div class="weather-main">
+            <div class="temperature">
+              <span class="temp-value">{{ currentResult.weather.current.temperature }}{{ currentResult.weather.temperatureUnit || '°F' }}</span>
+              <span class="feels-like">Feels like {{ currentResult.weather.current.feelsLike }}{{ currentResult.weather.temperatureUnit || '°F' }}</span>
+            </div>
+            <div class="weather-description">{{ currentResult.weather.current.description }}</div>
+          </div>
+          
+          <div class="weather-details">
+            <div class="weather-detail">
+              <span class="label">Humidity:</span>
+              <span class="value">{{ currentResult.weather.current.humidity }}%</span>
+            </div>
+            <div class="weather-detail">
+              <span class="label">Wind:</span>
+              <span class="value">{{ currentResult.weather.current.windSpeed }} mph</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Farm Analysis -->
+        <div v-if="currentResult.analysis" class="weather-analysis">
+          <h5><i class="pi pi-info-circle"></i> Farm Impact Analysis</h5>
+          <div class="analysis-content">{{ currentResult.analysis }}</div>
+        </div>
+
+        <!-- Recommendations -->
+        <div v-if="currentResult.recommendations && currentResult.recommendations.length" class="weather-recommendations">
+          <h5><i class="pi pi-lightbulb"></i> Recommendations</h5>
+          <ul class="recommendations-list">
+            <li v-for="recommendation in currentResult.recommendations" :key="recommendation">
+              {{ recommendation }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Weather Forecast -->
+        <div v-if="currentResult.weather.forecast" class="weather-forecast">
+          <h5><i class="pi pi-calendar"></i> Upcoming Forecast</h5>
+          <div class="forecast-grid">
+            <div v-for="forecast in currentResult.weather.forecast.slice(0, 4)" :key="forecast.time" class="forecast-item">
+              <div class="forecast-time">{{ forecast.time }}</div>
+              <div class="forecast-temp">{{ forecast.temperature }}{{ forecast.temperatureUnit || currentResult.weather.temperatureUnit || '°F' }}</div>
+              <div class="forecast-desc">{{ forecast.description }}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -98,10 +184,10 @@
                 :key="key"
                 v-show="!isHiddenField(key)"
                 class="card-field"
-                :class="`field-type-${cell.type}`"
+                :class="`field-type-${getValueType(cell)}`"
               >
                 <label>{{ formatColumnName(key) }}</label>
-                <span class="field-value">{{ cell.display }}</span>
+                <span class="field-value">{{ formatCellValue(cell) }}</span>
               </div>
             </div>
           </div>
@@ -136,6 +222,24 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Raw Data Fallback (when data exists but not properly formatted) -->
+        <div v-else-if="currentResult.data && currentResult.data.length > 0" class="raw-data-view">
+          <div class="raw-data-header">
+            <h4><i class="pi pi-database"></i> Raw Data View ({{ currentResult.data.length }} records)</h4>
+            <p>Data is being displayed in raw format. Check console for debugging info.</p>
+          </div>
+          
+          <div v-for="(row, index) in currentResult.data" :key="index" class="raw-data-card">
+            <div class="raw-data-title">Record {{ index + 1 }}</div>
+            <div class="key-value-pairs">
+              <div v-for="(value, key) in row" :key="key" class="key-value-pair">
+                <span class="key">{{ formatColumnName(key) }}:</span>
+                <span class="value" :class="getValueClass(value)">{{ formatDisplayValue(value) }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -189,7 +293,7 @@
 </template>
 
 <script>
-import NaturalLanguageQueryService from '@/services/nlToSqlService'
+import FarmManagementOrchestrator from '@/services/agentOrchestrator'
 
 export default {
   name: 'NaturalLanguageQuery',
@@ -201,15 +305,18 @@ export default {
       currentResult: null,
       queryHistory: [],
       insights: [],
-      nlService: null,
+      orchestrator: null,
       viewMode: 'cards', // 'cards' or 'table'
       suggestions: [
         "Show me all rabbits",
         "Which does are expected to kindle this month?",
         "Show me breeding plans",
         "How many rabbits do we have?",
-        "Show me active rabbits",
-        "Recent breeding activity"
+        "What's the weather like?",
+        "Is it too hot for my rabbits today?",
+        "Will it rain tomorrow?",
+        "What does the rabbit care manual say about housing?",
+        "Compare our breeding rates with industry standards"
       ]
     }
   },
@@ -233,14 +340,28 @@ export default {
   methods: {
     async initializeService() {
       try {
-        this.nlService = new NaturalLanguageQueryService(
+        const openaiApiKey = process.env.VUE_APP_OPENAI_API_KEY;
+        const weatherApiKey = process.env.VUE_APP_WEATHER_API_KEY;
+        const farmLocation = process.env.VUE_APP_FARM_LOCATION ;
+        
+
+        console.log('Vue Component - API Keys:', {
+          openai: openaiApiKey ? 'Present' : 'Missing',
+          weather: weatherApiKey ? 'Present' : 'Missing (will use mock data)',
+          farmLocation: farmLocation
+        });
+        
+        this.orchestrator = new FarmManagementOrchestrator(
           process.env.VUE_APP_SUPABASE_URL,
           process.env.VUE_APP_SUPABASE_ANON_KEY,
-          process.env.VUE_APP_OPENAI_API_KEY
+          openaiApiKey,
+          weatherApiKey,
+          farmLocation
         )
-        await this.nlService.initialize()
+        await this.orchestrator.initialize()
+        console.log('Multi-agent orchestrator initialized successfully')
       } catch (error) {
-        console.error('Failed to initialize NL service:', error)
+        console.error('Failed to initialize orchestrator:', error)
       }
     },
 
@@ -249,12 +370,24 @@ export default {
 
       this.loading = true
       try {
-        // Use the enhanced formatting method
-        let result = await this.nlService.queryFormatted(this.queryText.trim())
+        // Use the multi-agent orchestrator
+        const result = await this.orchestrator.query(this.queryText.trim())
         
-        // Ensure result is properly formatted (fallback safety)
-        result = this.nlService.ensureFormatted(result)
+        console.log('Multi-agent result:', result)
+        console.log('Result data:', result?.data)
+        console.log('Result displayColumns:', result?.displayColumns)
+        console.log('Data length:', result?.data?.length)
         
+        // Debug first row structure
+        if (result?.data && result.data.length > 0) {
+          console.log('First row structure:', result.data[0])
+          console.log('First row keys:', Object.keys(result.data[0]))
+          
+          // Check if data is properly formatted
+          const firstValue = Object.values(result.data[0])[0]
+          console.log('First cell value:', firstValue)
+          console.log('Is properly formatted?', firstValue && typeof firstValue === 'object' && firstValue.display !== undefined)
+        }
         this.currentResult = result
         
         // Add to history
@@ -272,7 +405,8 @@ export default {
         this.currentResult = {
           success: false,
           error: error.message,
-          originalQuery: this.queryText
+          originalQuery: this.queryText,
+          agent: 'vue_component'
         }
       } finally {
         this.loading = false
@@ -280,10 +414,10 @@ export default {
     },
 
     async loadInsights() {
-      if (!this.nlService) return
+      if (!this.orchestrator) return
       
       try {
-        this.insights = await this.nlService.getQuickInsights()
+        this.insights = await this.orchestrator.getQuickInsights()
       } catch (error) {
         console.error('Failed to load insights:', error)
       }
@@ -295,8 +429,127 @@ export default {
     },
 
     formatColumnName(column) {
-      return this.nlService?.formatColumnLabel(column) || 
-             column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      // For now, use simple formatting since orchestrator doesn't have formatColumnLabel
+      // TODO: Add formatting utilities to orchestrator when needed
+      return column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    },
+
+    getAgentTypeDisplay(queryType) {
+      const typeMap = {
+        'sql_only': 'Database Query',
+        'pdf_only': 'Document Analysis',
+        'weather_only': 'Weather Analysis',
+        'sql_pdf': 'Database + Document Analysis',
+        'sql_weather': 'Database + Weather Analysis',
+        'unclear': 'Auto-Routed'
+      }
+      return typeMap[queryType] || queryType
+    },
+
+    getAgentDisplayName(agentName) {
+      const agentMap = {
+        'sql': 'Database',
+        'pdf': 'Documents', 
+        'weather': 'Weather'
+      }
+      return agentMap[agentName] || agentName.charAt(0).toUpperCase() + agentName.slice(1)
+    },
+
+    // Format cell value - handles both formatted objects and raw values
+    formatCellValue(cell) {
+      // If it's a formatted object with display property
+      if (cell && typeof cell === 'object' && cell.display !== undefined) {
+        return cell.display
+      }
+      
+      // If it's a raw value, format it
+      return this.formatRawValue(cell)
+    },
+
+    // Format raw values for display
+    formatRawValue(value) {
+      if (value === null || value === undefined) {
+        return '—'
+      }
+      
+      if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No'
+      }
+      
+      if (typeof value === 'number') {
+        return value.toLocaleString()
+      }
+      
+      if (typeof value === 'object' && value !== null) {
+        // For objects, show a more readable format
+        if (Array.isArray(value)) {
+          return value.join(', ')
+        }
+        // For regular objects, create a readable key-value format
+        return Object.entries(value)
+          .map(([key, val]) => `${key}: ${val}`)
+          .join(' | ')
+      }
+      
+      return String(value)
+    },
+
+    // Get value type for styling
+    getValueType(cell) {
+      // If it's a formatted object with type property
+      if (cell && typeof cell === 'object' && cell.type !== undefined) {
+        return cell.type
+      }
+      
+      // Determine type from raw value
+      if (cell === null || cell === undefined) return 'empty'
+      if (typeof cell === 'boolean') return 'boolean'
+      if (typeof cell === 'number') return 'number'
+      if (typeof cell === 'object') return 'object'
+      return 'text'
+    },
+
+    // Format table cell value (for table view)
+    formatTableCellValue(cell) {
+      return this.formatCellValue(cell)
+    },
+
+    // Format value for display in raw data view
+    formatDisplayValue(value) {
+      if (value === null || value === undefined) {
+        return '—'
+      }
+      
+      // Format dates
+      if (typeof value === 'string' && value.includes('T') && value.includes(':')) {
+        try {
+          const date = new Date(value)
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+          }
+        } catch (e) {
+          // Not a date, continue
+        }
+      }
+      
+      if (typeof value === 'boolean') {
+        return value ? '✅ Yes' : '❌ No'
+      }
+      
+      if (typeof value === 'number') {
+        return value.toLocaleString()
+      }
+      
+      return String(value)
+    },
+
+    // Get CSS class for value type
+    getValueClass(value) {
+      if (value === null || value === undefined) return 'null-value'
+      if (typeof value === 'boolean') return 'boolean-value'
+      if (typeof value === 'number') return 'number-value'
+      if (typeof value === 'string' && value.includes('T') && value.includes(':')) return 'date-value'
+      return 'text-value'
     },
 
     getCardTitle(row) {
@@ -339,46 +592,7 @@ export default {
       return hiddenFields.includes(key)
     },
 
-    formatTableCellValue(cellData) {
-      // Handle the enhanced formatting structure
-      if (cellData && typeof cellData === 'object' && cellData.display !== undefined) {
-        return cellData.display
-      }
-      
-      // Handle raw values that might not be formatted
-      if (cellData === null || cellData === undefined) {
-        return '—'
-      }
-      
-      // Handle objects that need JSON formatting
-      if (typeof cellData === 'object') {
-        try {
-          // If it's a simple object with just a few keys, try to display more nicely
-          if (Object.keys(cellData).length <= 3) {
-            return Object.values(cellData).join(', ')
-          }
-          return JSON.stringify(cellData, null, 2)
-        } catch {
-          return '[Complex Object]'
-        }
-      }
-      
-      // Handle arrays
-      if (Array.isArray(cellData)) {
-        return cellData.join(', ')
-      }
-      
-      // Handle other primitive types
-      if (typeof cellData === 'boolean') {
-        return cellData ? 'Yes' : 'No'
-      }
-      
-      if (typeof cellData === 'number') {
-        return cellData.toLocaleString()
-      }
-      
-      return String(cellData)
-    }
+
   }
 }
 </script>
@@ -844,5 +1058,412 @@ export default {
   margin-top: 10px;
   color: #666;
   font-style: italic;
+}
+
+/* Multi-Agent Styles */
+.agent-info {
+  margin-top: 10px;
+}
+
+.agent-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.agent-badge.sql_only {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.agent-badge.pdf_only {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.agent-badge.weather_only {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.agent-badge.sql_pdf {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.agent-badge.sql_weather {
+  background: #e0f2fe;
+  color: #0277bd;
+}
+
+.agent-badge.unclear {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Individual agent badges */
+.agent-badge.sql_agent {
+  background: #dbeafe;
+  color: #1e40af;
+  margin-right: 8px;
+}
+
+.agent-badge.pdf_agent {
+  background: #f3e8ff;
+  color: #7c3aed;
+  margin-right: 8px;
+}
+
+.agent-badge.weather_agent {
+  background: #fef3c7;
+  color: #d97706;
+  margin-right: 8px;
+}
+
+.pdf-insights {
+  background: #f8fafc;
+  border-left: 4px solid #7c3aed;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.pdf-insights h4 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insights-content {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 15px;
+}
+
+.sources {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.sources ul {
+  margin: 5px 0 0 0;
+  padding-left: 20px;
+}
+
+.sources li {
+  margin: 2px 0;
+}
+
+/* Weather Display Styles */
+.weather-display {
+  background: #f0f9ff;
+  border-left: 4px solid #0ea5e9;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.weather-display h4 {
+  margin: 0 0 20px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weather-current {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.weather-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.temperature {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.temp-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: #0ea5e9;
+}
+
+.feels-like {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.weather-description {
+  font-size: 18px;
+  color: #374151;
+  text-transform: capitalize;
+}
+
+.weather-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weather-detail {
+  display: flex;
+  justify-content: space-between;
+  min-width: 120px;
+}
+
+.weather-detail .label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.weather-detail .value {
+  color: #374151;
+  font-weight: 600;
+}
+
+.weather-analysis {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.weather-analysis h5 {
+  margin: 0 0 10px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.analysis-content {
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.weather-recommendations {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.weather-recommendations h5 {
+  margin: 0 0 10px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recommendations-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #374151;
+}
+
+.recommendations-list li {
+  margin: 5px 0;
+}
+
+.weather-forecast {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.weather-forecast h5 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.forecast-item {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.forecast-time {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.forecast-temp {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0ea5e9;
+  margin-bottom: 4px;
+}
+
+.forecast-desc {
+  font-size: 12px;
+  color: #374151;
+  text-transform: capitalize;
+}
+
+/* Responsive adjustments for weather */
+@media (max-width: 768px) {
+  .weather-current {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  
+  .weather-details {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+  
+  .forecast-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Raw Data View Styles */
+.raw-data-view {
+  margin: 20px 0;
+}
+
+.raw-data-header {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 15px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
+}
+
+.raw-data-header h4 {
+  margin: 0 0 8px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.raw-data-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.raw-data-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 15px;
+  border-radius: 0 0 8px 8px;
+}
+
+.raw-data-card:first-of-type {
+  border-radius: 0 0 8px 8px;
+}
+
+.raw-data-card:not(:first-of-type) {
+  border-radius: 8px;
+}
+
+.raw-data-title {
+  background: #f1f5f9;
+  padding: 12px 20px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.key-value-pairs {
+  padding: 20px;
+}
+
+.key-value-pair {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 15px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.key-value-pair:last-child {
+  border-bottom: none;
+}
+
+.key {
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+  padding-right: 15px;
+}
+
+.value {
+  color: #111827;
+  word-break: break-word;
+}
+
+/* Value type styles */
+.null-value {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.boolean-value {
+  font-weight: 500;
+}
+
+.number-value {
+  font-family: monospace;
+  color: #059669;
+}
+
+.date-value {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.text-value {
+  color: #374151;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .key-value-pair {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .key {
+    text-align: left;
+    padding-right: 0;
+    font-weight: 600;
+  }
 }
 </style> 
