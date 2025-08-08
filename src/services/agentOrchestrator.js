@@ -3,6 +3,7 @@ import SqlAgent from './agents/sqlAgent.js';
 import PdfAgent from './agents/pdfAgent.js';
 import WeatherAgent from './agents/weatherAgent.js';
 import { createClient } from '@supabase/supabase-js';
+import apiConfig from '@/utils/apiConfig.js';
 
 // Shared Context for agent communication
 class AgentContext {
@@ -328,22 +329,17 @@ RULES:
 3. Keep the query natural and complete for that agent
 4. If the original query has no relevant part for this agent, return a related fallback query`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Original query: "${originalQuery}"\nAgent: ${agentName}\n\nDecompose this query for the ${agentName} agent:` }
-          ],
+      const response = await apiConfig.makeChatCompletionRequest(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Original query: "${originalQuery}"\nAgent: ${agentName}\n\nDecompose this query for the ${agentName} agent:` }
+        ],
+        this.openaiApiKey,
+        {
           temperature: 0.1,
           max_tokens: 200
-        })
-      });
+        }
+      );
 
       if (!response.ok) {
         console.log(`Orchestrator: Query decomposition failed for ${agentName}, using original query`);

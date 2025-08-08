@@ -1,5 +1,7 @@
 // Router Agent - Determines which agents should process the query
 
+import apiConfig from '@/utils/apiConfig.js';
+
 class RouterAgent {
   constructor(openaiApiKey) {
     this.openaiApiKey = openaiApiKey;
@@ -48,22 +50,17 @@ IMPORTANT:
 - Only use agent names from the available list: sql, pdf, weather
 - Consider data dependencies (sql data often needed before weather for specific dates)`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Select agents for this farm management query: "${query}"\n\nReturn JSON array of agent names.` }
-          ],
+      const response = await apiConfig.makeChatCompletionRequest(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Select agents for this farm management query: "${query}"\n\nReturn JSON array of agent names.` }
+        ],
+        this.openaiApiKey,
+        {
           temperature: 0.1,
           max_tokens: 100
-        })
-      });
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`OpenAI API error: ${response.statusText}`);

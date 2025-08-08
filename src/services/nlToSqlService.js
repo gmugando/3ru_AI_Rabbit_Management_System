@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import apiConfig from '@/utils/apiConfig.js'
 
 class NaturalLanguageQueryService {
   constructor(supabaseUrl, supabaseKey, openaiApiKey) {
@@ -135,22 +136,17 @@ class NaturalLanguageQueryService {
     const systemPrompt = this.buildSystemPrompt()
     
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: naturalLanguageQuery }
-          ],
+      const response = await apiConfig.makeChatCompletionRequest(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: naturalLanguageQuery }
+        ],
+        this.openaiApiKey,
+        {
           temperature: 0.1,
           max_tokens: 500
-        })
-      })
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`OpenAI API error: ${response.statusText}`)

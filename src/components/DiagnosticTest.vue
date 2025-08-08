@@ -52,6 +52,7 @@
 
 <script>
 import FarmManagementOrchestrator from '@/services/agentOrchestrator'
+import apiConfig from '@/utils/apiConfig.js'
 
 export default {
   name: 'DiagnosticTest',
@@ -107,20 +108,15 @@ export default {
     async testOpenAI() {
       this.testing = true
       try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.VUE_APP_OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4',
-            messages: [
-              { role: 'user', content: 'Say "Hello, OpenAI is working!"' }
-            ],
+        const response = await apiConfig.makeChatCompletionRequest(
+          [
+            { role: 'user', content: 'Say "Hello, OpenAI is working!"' }
+          ],
+          process.env.VUE_APP_OPENAI_API_KEY,
+          {
             max_tokens: 20
-          })
-        })
+          }
+        )
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)

@@ -1,3 +1,5 @@
+import apiConfig from '@/utils/apiConfig.js';
+
 class WeatherAgent {
   constructor(openaiApiKey, weatherApiKey, defaultLocation = 'Denver, CO', userPreferences = null) {
     this.openaiApiKey = openaiApiKey;
@@ -46,19 +48,12 @@ class WeatherAgent {
 
   async extractLocation(query) {
     try {
-      // Use OpenAI to extract location from natural language
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: `Extract the location from the user's weather query. If no specific location is mentioned, return "DEFAULT". 
+      // Use centralized API configuration to extract location from natural language
+      const response = await apiConfig.makeChatCompletionRequest(
+        [
+          {
+            role: 'system',
+            content: `Extract the location from the user's weather query. If no specific location is mentioned, return "DEFAULT". 
 
 Examples:
 "What's the weather in Denver?" → "Denver, CO"
@@ -68,13 +63,15 @@ Examples:
 "Weather forecast" → "DEFAULT"
 
 Return only the location string, nothing else.`
-            },
-            { role: 'user', content: query }
-          ],
+          },
+          { role: 'user', content: query }
+        ],
+        this.openaiApiKey,
+        {
           temperature: 0.1,
           max_tokens: 50
-        })
-      });
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`OpenAI API error: ${response.statusText}`);
@@ -249,22 +246,17 @@ Provide practical advice for rabbit farmers based on this weather. Focus on:
 
 Keep response concise and actionable.`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Weather query: "${originalQuery}"\n\nWhat should rabbit farmers know about these conditions?` }
-          ],
+      const response = await apiConfig.makeChatCompletionRequest(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Weather query: "${originalQuery}"\n\nWhat should rabbit farmers know about these conditions?` }
+        ],
+        this.openaiApiKey,
+        {
           temperature: 0.3,
           max_tokens: 800
-        })
-      });
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`OpenAI API error: ${response.statusText}`);
