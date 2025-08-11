@@ -2,19 +2,22 @@
   <div class="landing-page">
     <!-- Hero Section -->
     <header class="hero">
-      <nav class="nav-bar">
+      <nav class="nav-bar" :class="{ responsive: isNavOpen }" id="myTopnav">
         <div class="logo">
           <img src="@/assets/logo.png" alt="RMS Logo">
           <span>3RU RMS</span>
         </div>
-        <div class="nav-links">
-          <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
-          <div class="auth-buttons">
-            <router-link to="/login" class="btn-login">Login</router-link>
-            <router-link to="/register" class="btn-register">Register</router-link>
-          </div>
-        </div>
+                 <div class="nav-links">
+           <a href="#features" @click="closeNav">Features</a>
+           <a href="#pricing" @click="closeNav">Pricing</a>
+           <div class="auth-buttons">
+             <router-link to="/login" class="btn-login" @click="closeNav">Login</router-link>
+             <router-link to="/register" class="btn-register" @click="closeNav">Register</router-link>
+           </div>
+         </div>
+        <a href="javascript:void(0);" class="icon" @click="toggleNav">
+          <i class="pi pi-bars"></i>
+        </a>
       </nav>
       <div class="hero-content">
         <div class="hero-text">
@@ -244,7 +247,7 @@
         </div>
         <div class="footer-section">
           <h4>Contact</h4>
-          <p>Email: support@3ru-rabbitry.co.za/</p>
+          <p>Email: support@{{ getEmailDomain() }}</p>
           <p>Phone: +27 74 079 8159</p>
         </div>
       </div>
@@ -256,21 +259,96 @@
 </template>
 
 <script>
+import { ref, onMounted, onUnmounted } from 'vue'
+import seoService from '@/services/seo'
+import { getFullUrl, getEmailDomain } from '@/utils/config'
+
 export default {
   name: 'LandingPage',
-  data() {
-    return {
-      currentSlide: 1
+  setup() {
+    const currentSlide = ref(1)
+    const isNavOpen = ref(false)
+    let slideshowInterval = null
+
+    const toggleNav = () => {
+      console.log('Toggle nav clicked, current state:', isNavOpen.value)
+      isNavOpen.value = !isNavOpen.value
+      console.log('New state:', isNavOpen.value)
     }
-  },
-  mounted() {
-    this.startSlideshow()
-  },
-  methods: {
-    startSlideshow() {
-      setInterval(() => {
-        this.currentSlide = this.currentSlide === 3 ? 1 : this.currentSlide + 1
+
+    const closeNav = () => {
+      isNavOpen.value = false
+      // Smooth scroll to section after a small delay to allow menu to close
+      setTimeout(() => {
+        const hash = window.location.hash
+        if (hash) {
+          const element = document.querySelector(hash)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' })
+          }
+        }
+      }, 100)
+    }
+
+    const startSlideshow = () => {
+      slideshowInterval = setInterval(() => {
+        currentSlide.value = currentSlide.value === 3 ? 1 : currentSlide.value + 1
       }, 5000)
+    }
+
+    const closeNavOnResize = () => {
+      if (window.innerWidth > 768) {
+        isNavOpen.value = false
+      }
+    }
+
+    onMounted(() => {
+      startSlideshow()
+      window.addEventListener('resize', closeNavOnResize)
+      
+      // Set SEO meta tags directly using the service
+      seoService.updateMetaTags({
+        title: '3RU RMS - AI-Powered Rabbit Management System',
+        description: 'Revolutionize your rabbit farming with artificial intelligence. Comprehensive features for breeding, health monitoring, and farm management.',
+        keywords: 'rabbit management, rabbit farming, AI farming, breeding management, rabbit health, farm automation, livestock management',
+        url: getFullUrl(window.location.pathname)
+      })
+      
+      // Add structured data
+      seoService.addOrganizationData()
+      seoService.addSoftwareData()
+      
+      // Add FAQ structured data
+      const faqs = [
+        {
+          question: 'What is 3RU RMS?',
+          answer: '3RU RMS is an AI-powered rabbit management system that helps farmers manage their rabbit farms efficiently with features like breeding recommendations, health monitoring, and financial tracking.'
+        },
+        {
+          question: 'How does AI help in rabbit farming?',
+          answer: 'Our AI system provides breeding recommendations, predicts health issues, and automates farm management tasks to optimize your rabbit farming operations.'
+        },
+        {
+          question: 'Is 3RU RMS free to use?',
+          answer: 'We offer a free starter plan for up to 5 rabbits, with premium plans available for larger farms.'
+        }
+      ]
+      seoService.addFAQData(faqs)
+    })
+
+    onUnmounted(() => {
+      if (slideshowInterval) {
+        clearInterval(slideshowInterval)
+      }
+      window.removeEventListener('resize', closeNavOnResize)
+    })
+
+    return {
+      currentSlide,
+      isNavOpen,
+      toggleNav,
+      closeNav,
+      getEmailDomain
     }
   }
 }
@@ -333,6 +411,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* Hamburger menu icon */
+.icon {
+  display: none;
+  color: #64748b;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  z-index: 1001;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.icon:hover {
+  color: #3b82f6;
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 /* Hero Section */
@@ -749,7 +848,122 @@ export default {
   transform: scale(1.2);
 }
 
-@media (max-width: 768px) {
+/* Responsive Navigation - Modern Mobile Menu */
+@media screen and (max-width: 768px) {
+  /* Override any dark mode styles */
+  .landing-page .nav-bar.responsive {
+    background: rgba(30, 41, 59, 0.95) !important;
+  }
+  .nav-bar {
+    padding: 1rem;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .nav-bar.responsive {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+    min-height: auto;
+    background: rgba(30, 41, 59, 0.95) !important;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-bar.responsive .nav-links {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0;
+    margin-top: 1.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .landing-page .nav-bar.responsive .nav-links a {
+    display: block;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0 !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+  }
+
+  .nav-bar.responsive .nav-links a:hover {
+    color: #60a5fa;
+    background: rgba(255, 255, 255, 0.05);
+    padding-left: 0.5rem;
+  }
+
+  .nav-bar.responsive .auth-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    align-items: center;
+  }
+
+  .nav-bar.responsive .auth-buttons a {
+    text-align: center;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin: 0.25rem 0;
+    min-width: 120px;
+  }
+
+  .nav-bar.responsive .btn-login {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-bar.responsive .btn-login:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .nav-bar.responsive .btn-register {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .nav-bar.responsive .btn-register:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .icon {
+    display: block;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .nav-bar.responsive .icon {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    color: #e2e8f0;
+  }
+
+  .nav-bar.responsive .icon:hover {
+    color: #60a5fa;
+  }
+
+  /* Hero responsive adjustments */
   .hero {
     min-height: auto;
     padding: 6rem 1rem 2rem;
@@ -782,6 +996,12 @@ export default {
   .feature-slider {
     height: 250px;
     margin-top: 1rem;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  .icon {
+    display: none;
   }
 }
 </style> 

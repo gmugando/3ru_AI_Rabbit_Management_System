@@ -13,6 +13,7 @@
     "@langchain/openai": "^0.6.2",
     "@mdi/font": "^7.4.47",
     "@supabase/supabase-js": "^2.48.1",
+
     "chart.js": "^3.9.1",
     "core-js": "^3.8.3",
     "langchain": "^0.3.30",

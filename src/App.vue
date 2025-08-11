@@ -13,7 +13,7 @@
           <div class="sidebar-menu">
             <div class="menu-section">
               <span class="menu-section-text">MAIN</span>
-              <router-link to="/dashboard" class="menu-item">
+              <router-link to="/dashboard" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-home"></i>
                 <span>Dashboard</span>
               </router-link>
@@ -21,19 +21,19 @@
 
             <div class="menu-section">
               <span class="menu-section-text">MANAGEMENT</span>
-              <router-link to="/rabbits" class="menu-item">
+              <router-link to="/rabbits" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="mdi mdi-rabbit"></i>
                 <span>Rabbits</span>
               </router-link>
-              <router-link to="/breeding" class="menu-item">
+              <router-link to="/breeding" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-users"></i>
                 <span>Breeding</span>
               </router-link>
-              <router-link to="/feeding" class="menu-item">
+              <router-link to="/feeding" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="mdi mdi-food-variant"></i>
                 <span>Feeding</span>
               </router-link>
-              <router-link to="/weight-tracking" class="menu-item">
+              <router-link to="/weight-tracking" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-chart-line"></i>
                 <span>Weight Tracking</span>
               </router-link>
@@ -41,7 +41,7 @@
 
             <div class="menu-section">
               <span class="menu-section-text">HEALTH MANAGEMENT</span>
-              <router-link to="/health-data" class="menu-item">
+              <router-link to="/health-data" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-shield"></i>
                 <span>Health Data Management</span>
               </router-link>
@@ -49,7 +49,7 @@
 
             <div class="menu-section">
               <span class="menu-section-text">AI Chat</span>
-              <router-link to="/farm-chat" class="menu-item">
+              <router-link to="/farm-chat" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-comments"></i>
                 <span>Farm Chat</span>
               </router-link>
@@ -57,7 +57,7 @@
             
             <div class="menu-section">
               <span class="menu-section-text">Documents</span>
-              <router-link to="/documents" class="menu-item">
+              <router-link to="/documents" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-file-pdf"></i>
                 <span>Document Library</span>
               </router-link>
@@ -66,15 +66,15 @@
 
             <div class="menu-section">
               <span class="menu-section-text">BUSINESS</span>
-              <router-link to="/finance" class="menu-item">
+              <router-link to="/finance" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-dollar"></i>
                 <span>Finance</span>
               </router-link>
-              <router-link to="/schedule" class="menu-item">
+              <router-link to="/schedule" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-calendar"></i>
                 <span>Schedule</span>
               </router-link>
-              <router-link to="/reports" class="menu-item">
+              <router-link to="/reports" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-chart-bar"></i>
                 <span>Reports</span>
               </router-link>
@@ -83,18 +83,18 @@
             <div class="menu-section">
               <span class="menu-section-text">ADMINISTRATION</span>
               <template v-if="userRole === 'SUPER_ADMIN'">
-                <router-link to="/tenants" class="menu-item">
+                <router-link to="/tenants" class="menu-item" @click="closeSidebarOnMobile">
                   <i class="pi pi-building"></i>
                   <span>Tenants</span>
                 </router-link>
               </template>
               <template v-if="userRole === 'TENANT_ADMIN' || userRole === 'SUPER_ADMIN'">
-                <router-link to="/users" class="menu-item">
+                <router-link to="/users" class="menu-item" @click="closeSidebarOnMobile">
                   <i class="pi pi-users"></i>
                   <span>Users</span>
                 </router-link>
               </template>
-              <router-link to="/settings" class="menu-item">
+              <router-link to="/settings" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-cog"></i>
                 <span>Settings</span>
               </router-link>
@@ -123,7 +123,7 @@
           </main>
         </div>
         <!-- Overlay for mobile -->
-        <div v-if="isSidebarOpen" class="sidebar-overlay" @click="toggleSidebar"></div>
+        <div v-if="isSidebarOpen" class="sidebar-overlay active" @click="toggleSidebar"></div>
       </div>
     </template>
     <template v-else>
@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
@@ -148,12 +148,36 @@ export default {
     const store = useStore()
     const router = useRouter()
     const isSidebarOpen = ref(false)
+    const isMobile = ref(false)
 
     const userRole = computed(() => store.state.user?.role)
     const userName = computed(() => store.state.user?.name)
 
+    // Check if mobile on mount and resize
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+
+    // Initialize mobile check
+    checkMobile()
+
+    // Add resize listener
+    window.addEventListener('resize', checkMobile)
+
+    // Cleanup on unmount
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkMobile)
+    })
+
     const toggleSidebar = () => {
       isSidebarOpen.value = !isSidebarOpen.value
+    }
+
+    const closeSidebarOnMobile = () => {
+      // Only close sidebar on mobile devices
+      if (isMobile.value) {
+        isSidebarOpen.value = false
+      }
     }
 
     const logout = async () => {
@@ -177,7 +201,8 @@ export default {
       userName,
       logout,
       isSidebarOpen,
-      toggleSidebar
+      toggleSidebar,
+      closeSidebarOnMobile
     }
   }
 }
@@ -349,6 +374,10 @@ export default {
   z-index: 999;
 }
 
+.sidebar-overlay.active {
+  display: block;
+}
+
 .sidebar-close {
   display: none;
   position: absolute;
@@ -388,10 +417,6 @@ export default {
 
   .sidebar-overlay {
     display: none;
-  }
-
-  .sidebar-overlay.active {
-    display: block;
   }
 
   .sidebar-close {
