@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://3ru-rabbitry.co.za/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /_nuxt/
+Disallow: /static/
+
+# Allow important pages
+Allow: /features
+Allow: /pricing
+Allow: /login
+Allow: /register
+
+# Crawl delay (optional)
+Crawl-delay: 1

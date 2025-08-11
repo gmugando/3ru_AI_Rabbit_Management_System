@@ -28,6 +28,8 @@ jobs:
           VUE_APP_SUPABASE_URL: ${{ secrets.VUE_APP_SUPABASE_URL }}
           VUE_APP_SUPABASE_ANON_KEY: ${{ secrets.VUE_APP_SUPABASE_ANON_KEY }}
           VUE_APP_OPENAI_API_KEY: ${{ secrets.VUE_APP_OPENAI_API_KEY }}
+          VUE_APP_SITE_DOMAIN: ${{ secrets.VUE_APP_SITE_DOMAIN }}
+          VUE_APP_GA_TRACKING_ID: ${{ secrets.VUE_APP_GA_TRACKING_ID }}
 
       - name: Upload to cPanel 📂
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4

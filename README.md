@@ -50,6 +50,10 @@ VUE_APP_SUPABASE_URL=your_supabase_url
 VUE_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Open AI
 VUE_APP_OPENAI_API_KEY=your_openai_key
+# Site Domain (for SEO and social sharing)
+VUE_APP_SITE_DOMAIN=https://your-domain.com
+# Google Analytics (optional)
+VUE_APP_GA_TRACKING_ID=G-XXXXXXXXXX
 ```
 
 4. Start the development server:
