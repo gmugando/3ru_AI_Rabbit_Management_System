@@ -172,8 +172,19 @@ export class FinancialIntegrationService {
         .select('id')
         .eq('created_by', userId)
         .eq('status', 'active')
+        .or('is_deleted.is.null,is_deleted.eq.false')
 
-      if (rabbitError) throw rabbitError
+      if (rabbitError) {
+        console.error('Rabbit query error:', rabbitError)
+        // Return default values instead of throwing
+        return {
+          rabbitCount: 1,
+          totalExpenses: 0,
+          costPerRabbit: 0,
+          monthlyExpenses: 0,
+          monthlyCostPerRabbit: 0
+        }
+      }
 
       const rabbitCount = rabbits?.length || 1 // Avoid division by zero
 

@@ -379,9 +379,10 @@ export default {
         
         // Get comprehensive analytics
         const analytics = await financialIntegration.getFinancialAnalytics(user.id, months)
+        console.log('Financial Analytics Raw Data:', analytics)
         
         // Process data for reports
-        reportData.value = {
+        const processedData = {
           summary: calculateSummary(analytics),
           trends: processTrendsData(analytics),
           categories: processCategoryData(analytics),
@@ -396,9 +397,26 @@ export default {
           }
         }
         
+        console.log('Processed Report Data:', processedData)
+        console.log('Trends Data:', processedData.trends)
+        console.log('Categories Data:', processedData.categories)
+        console.log('Farm Costs Data:', processedData.farmCosts)
+        
+        reportData.value = processedData
+        
         // Update charts after data is loaded
         await nextTick()
-        updateCharts()
+        // Add a small delay to ensure DOM elements are fully rendered
+        setTimeout(() => {
+          updateCharts()
+          // Retry chart creation if elements are still not found
+          setTimeout(() => {
+            if (!chartsInstances.trends && !chartsInstances.category && !chartsInstances.farmCosts && !chartsInstances.profit) {
+              console.log('Retrying chart creation...')
+              updateCharts()
+            }
+          }, 500)
+        }, 100)
         
       } catch (err) {
         console.error('Error generating financial report:', err)
@@ -424,25 +442,62 @@ export default {
     
     // Process trends data for charts
     const processTrendsData = (analytics) => {
-      if (!analytics.monthlyTrends) return { labels: [], revenue: [], expenses: [], profit: [] }
+      console.log('Processing trends data:', analytics.monthlyTrends)
+      
+      if (!analytics.monthlyTrends || !Array.isArray(analytics.monthlyTrends) || analytics.monthlyTrends.length === 0) {
+        // Fallback: create current month data point
+        const currentMonth = new Date().toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+        return {
+          labels: [currentMonth],
+          revenue: [analytics.totalRevenue || 0],
+          expenses: [analytics.totalExpenses || 0],
+          profit: [(analytics.totalRevenue || 0) - (analytics.totalExpenses || 0)]
+        }
+      }
       
       const trends = analytics.monthlyTrends
       return {
         labels: trends.map(t => new Date(t.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })),
-        revenue: trends.map(t => t.revenue),
-        expenses: trends.map(t => t.expenses),
-        profit: trends.map(t => t.profit)
+        revenue: trends.map(t => parseFloat(t.revenue) || 0),
+        expenses: trends.map(t => parseFloat(t.expenses) || 0),
+        profit: trends.map(t => parseFloat(t.profit) || 0)
       }
     }
     
     // Process category data
     const processCategoryData = (analytics) => {
-      if (!analytics.categoryBreakdown) return { labels: [], data: [] }
+      console.log('Processing category data:', analytics.categoryBreakdown)
+      
+      if (!analytics.categoryBreakdown || typeof analytics.categoryBreakdown !== 'object') {
+        // Fallback: create basic categories from total expenses
+        const totalExpenses = analytics.totalExpenses || 0
+        if (totalExpenses > 0) {
+          return {
+            labels: ['General Expenses'],
+            data: [totalExpenses]
+          }
+        }
+        return { labels: [], data: [] }
+      }
       
       const categories = Object.entries(analytics.categoryBreakdown)
+        .filter(([, data]) => data && (data.expenses || 0) > 0)
+      
+      if (categories.length === 0) {
+        // Fallback if no valid categories
+        const totalExpenses = analytics.totalExpenses || 0
+        if (totalExpenses > 0) {
+          return {
+            labels: ['General Expenses'],
+            data: [totalExpenses]
+          }
+        }
+        return { labels: [], data: [] }
+      }
+      
       return {
-        labels: categories.map(([name]) => name),
-        data: categories.map(([, data]) => data.expenses || 0)
+        labels: categories.map(([name]) => name.charAt(0).toUpperCase() + name.slice(1)),
+        data: categories.map(([, data]) => parseFloat(data.expenses) || 0)
       }
     }
     
@@ -542,22 +597,35 @@ export default {
     
     // Update all charts
     const updateCharts = () => {
-      if (!reportData.value) return
+      if (!reportData.value) {
+        console.log('No report data available for charts')
+        return
+      }
+      
+      console.log('Updating charts with data:', reportData.value)
+      console.log('Chart elements check:', {
+        trendsChart: !!trendsChart.value,
+        categoryChart: !!categoryChart.value,
+        farmCostsChart: !!farmCostsChart.value,
+        profitChart: !!profitChart.value
+      })
       
       // Destroy existing charts
       Object.values(chartsInstances).forEach(chart => chart?.destroy())
       chartsInstances = {}
       
       // Trends chart
-      if (trendsChart.value) {
+      if (trendsChart.value && reportData.value.trends) {
+        console.log('Creating trends chart with:', reportData.value.trends)
+        
         chartsInstances.trends = new Chart(trendsChart.value, {
           type: chartType.value,
           data: {
-            labels: reportData.value.trends.labels,
+            labels: reportData.value.trends.labels || [],
             datasets: [
               {
                 label: 'Revenue',
-                data: reportData.value.trends.revenue,
+                data: reportData.value.trends.revenue || [],
                 borderColor: '#10b981',
                 backgroundColor: chartType.value === 'bar' ? '#10b981' : 'rgba(16, 185, 129, 0.1)',
                 tension: 0.4,
@@ -565,7 +633,7 @@ export default {
               },
               {
                 label: 'Expenses',
-                data: reportData.value.trends.expenses,
+                data: reportData.value.trends.expenses || [],
                 borderColor: '#ef4444',
                 backgroundColor: chartType.value === 'bar' ? '#ef4444' : 'rgba(239, 68, 68, 0.1)',
                 tension: 0.4,
@@ -580,30 +648,41 @@ export default {
             scales: { y: { beginAtZero: true } }
           }
         })
+      } else {
+        console.log('Trends chart cannot be created - missing element or data')
       }
       
       // Category pie chart
-      if (categoryChart.value) {
-        chartsInstances.category = new Chart(categoryChart.value, {
-          type: 'doughnut',
-          data: {
-            labels: reportData.value.categories.labels,
-            datasets: [{
-              data: reportData.value.categories.data,
-              backgroundColor: [
-                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-                '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6b7280'
-              ]
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { position: 'bottom' }
+      if (categoryChart.value && reportData.value.categories) {
+        console.log('Creating category chart with:', reportData.value.categories)
+        
+        // Only create chart if there's data to display
+        if (reportData.value.categories.labels.length > 0 && reportData.value.categories.data.length > 0) {
+          chartsInstances.category = new Chart(categoryChart.value, {
+            type: 'doughnut',
+            data: {
+              labels: reportData.value.categories.labels,
+              datasets: [{
+                data: reportData.value.categories.data,
+                backgroundColor: [
+                  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                  '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6b7280'
+                ]
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom' }
+              }
             }
-          }
-        })
+          })
+        } else {
+          console.log('Category chart not created - no data available')
+        }
+      } else {
+        console.log('Category chart cannot be created - missing element or data')
       }
       
       // Farm costs chart
@@ -613,6 +692,18 @@ export default {
           reportData.value.farmCosts?.feed?.total || 0,
           reportData.value.farmCosts?.other || 0
         ]
+        
+        console.log('Creating farm costs chart with:', farmCosts)
+        
+        // Ensure at least some data to display
+        const hasData = farmCosts.some(cost => cost > 0)
+        if (!hasData) {
+          // Fallback: show total expenses as "General Costs"
+          const totalExpenses = reportData.value.summary?.totalExpenses || 0
+          if (totalExpenses > 0) {
+            farmCosts[2] = totalExpenses // Put in "Other" category
+          }
+        }
         
         chartsInstances.farmCosts = new Chart(farmCostsChart.value, {
           type: 'bar',
@@ -631,17 +722,21 @@ export default {
             scales: { y: { beginAtZero: true } }
           }
         })
+      } else {
+        console.log('Farm costs chart cannot be created - missing element or data')
       }
       
       // Profit chart
-      if (profitChart.value) {
+      if (profitChart.value && reportData.value.trends) {
+        console.log('Creating profit chart with:', reportData.value.trends)
+        
         chartsInstances.profit = new Chart(profitChart.value, {
           type: 'line',
           data: {
-            labels: reportData.value.trends.labels,
+            labels: reportData.value.trends.labels || [],
             datasets: [{
               label: 'Profit',
-              data: reportData.value.trends.profit,
+              data: reportData.value.trends.profit || [],
               borderColor: '#10b981',
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
               tension: 0.4,
@@ -655,6 +750,8 @@ export default {
             scales: { y: { beginAtZero: false } }
           }
         })
+      } else {
+        console.log('Profit chart cannot be created - missing element or data')
       }
     }
     
@@ -690,7 +787,10 @@ export default {
     
     onMounted(async () => {
       await currencyService.initialize()
-      await generateReport()
+      // Add a small delay to ensure all DOM elements are ready
+      setTimeout(async () => {
+        await generateReport()
+      }, 200)
     })
     
     return {

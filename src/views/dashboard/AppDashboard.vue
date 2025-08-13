@@ -194,6 +194,8 @@ export default {
     
     const populationChart = ref(null)
     const revenueChart = ref(null)
+    let populationChartInstance = null
+    let revenueChartInstance = null
     
     // Dashboard stats
     const dashboardStats = ref({
@@ -209,27 +211,27 @@ export default {
     const upcomingTasks = ref([])
     const loading = ref(true)
 
-    const populationData = {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    const populationData = ref({
+      labels: [],
       datasets: [{
         label: 'Rabbit Population',
-        data: [120, 135, 142, 156, 168, 172, 185, 190, 205, 215, 230, 245],
+        data: [],
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.4,
         fill: true
       }]
-    }
+    })
 
-    const revenueData = {
-      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    const revenueData = ref({
+      labels: [],
       datasets: [{
         label: 'Revenue',
-        data: [1200, 1900, 1600, 2450],
+        data: [],
         backgroundColor: '#10b981',
         borderRadius: 6
       }]
-    }
+    })
 
     const chartOptions = {
       responsive: true,
@@ -255,6 +257,74 @@ export default {
       }
     }
 
+    const fetchPopulationTrends = async () => {
+      try {
+        // Fetch population trends from dashboard service
+        const trends = await dashboardService.getPopulationTrends()
+        console.log('Population trends received:', trends)
+        
+        if (trends && trends.length > 0) {
+          populationData.value.labels = trends.map(t => {
+            const date = new Date(t.month)
+            return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          })
+          populationData.value.datasets[0].data = trends.map(t => t.population)
+          
+          // Update chart if it exists
+          if (populationChartInstance) {
+            populationChartInstance.data = populationData.value
+            populationChartInstance.update()
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching population trends:', error)
+        // Fallback to current month data if available
+        if (dashboardStats.value.totalRabbits > 0) {
+          const currentMonth = new Date().toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          populationData.value.labels = [currentMonth]
+          populationData.value.datasets[0].data = [dashboardStats.value.totalRabbits]
+          
+          if (populationChartInstance) {
+            populationChartInstance.data = populationData.value
+            populationChartInstance.update()
+          }
+        }
+      }
+    }
+
+    const fetchRevenueTrends = async () => {
+      try {
+        // Fetch weekly revenue trends from dashboard service
+        const trends = await dashboardService.getWeeklyRevenueTrends()
+        console.log('Revenue trends received:', trends)
+        
+        if (trends && trends.length > 0) {
+          revenueData.value.labels = trends.map(t => t.week)
+          revenueData.value.datasets[0].data = trends.map(t => t.revenue)
+          
+          // Update chart if it exists
+          if (revenueChartInstance) {
+            revenueChartInstance.data = revenueData.value
+            revenueChartInstance.update()
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching revenue trends:', error)
+        // Fallback to current week data if available
+        if (dashboardStats.value.monthlyRevenue > 0) {
+          const currentWeek = `Week ${Math.ceil(new Date().getDate() / 7)}`
+          const weeklyEstimate = dashboardStats.value.monthlyRevenue / 4 // Rough weekly estimate
+          revenueData.value.labels = [currentWeek]
+          revenueData.value.datasets[0].data = [weeklyEstimate]
+          
+          if (revenueChartInstance) {
+            revenueChartInstance.data = revenueData.value
+            revenueChartInstance.update()
+          }
+        }
+      }
+    }
+
     const fetchDashboardData = async () => {
       try {
         loading.value = true
@@ -274,6 +344,12 @@ export default {
         const tasks = await dashboardService.getUpcomingTasks()
         console.log('Upcoming tasks received:', tasks)
         upcomingTasks.value = tasks
+        
+        // Fetch population trends
+        await fetchPopulationTrends()
+        
+        // Fetch revenue trends
+        await fetchRevenueTrends()
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -328,18 +404,18 @@ export default {
       
       // Create Population Chart
       if (populationChart.value) {
-        new Chart(populationChart.value, {
+        populationChartInstance = new Chart(populationChart.value, {
           type: 'line',
-          data: populationData,
+          data: populationData.value,
           options: chartOptions
         })
       }
 
       // Create Revenue Chart
       if (revenueChart.value) {
-        new Chart(revenueChart.value, {
+        revenueChartInstance = new Chart(revenueChart.value, {
           type: 'bar',
-          data: revenueData,
+          data: revenueData.value,
           options: chartOptions
         })
       }

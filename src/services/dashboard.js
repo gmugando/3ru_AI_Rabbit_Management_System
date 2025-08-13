@@ -108,7 +108,7 @@ class DashboardService {
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
-        .eq('status', 'Active')
+        .eq('status', 'active')
         .not('doe_id', 'is', null)
         .not('buck_id', 'is', null)
 
@@ -137,7 +137,7 @@ class DashboardService {
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
-        .eq('status', 'Active')
+        .eq('status', 'active')
         .not('expected_kindle_date', 'is', null)
         .gte('expected_kindle_date', firstDayOfMonth)
         .lt('expected_kindle_date', firstDayOfNextMonth)
@@ -179,6 +179,142 @@ class DashboardService {
     // actual revenue calculation based on your business logic
     // For now, we'll assume revenue is 2x expenses as a rough estimate
     return expenses * 2
+  }
+
+  async getPopulationTrends(months = 6) {
+    try {
+      console.log('Fetching population trends...')
+      
+      // Get current user
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return []
+      }
+
+      // Get all rabbits for the user
+      const { data: rabbits, error: rabbitsError } = await this.supabase
+        .from('rabbits')
+        .select('id, created_at, status')
+        .eq('created_by', user.id)
+        .or('is_deleted.is.null,is_deleted.eq.false')
+
+      if (rabbitsError) {
+        console.error('Error fetching rabbits:', rabbitsError)
+        return []
+      }
+
+      // Generate trends for the specified number of months
+      const trends = []
+      const now = new Date()
+      
+      for (let i = months - 1; i >= 0; i--) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0)
+        
+        const populationAtEndOfMonth = rabbits.filter(r => {
+          const createdDate = new Date(r.created_at)
+          return createdDate <= endOfMonth
+        }).length
+        
+        trends.push({
+          month: targetDate.toISOString().slice(0, 7),
+          population: populationAtEndOfMonth,
+          date: targetDate
+        })
+      }
+      
+      // Ensure we always have at least current month data for chart display
+      if (trends.length === 0 || trends.every(t => t.population === 0)) {
+        const currentMonth = new Date()
+        trends.push({
+          month: currentMonth.toISOString().slice(0, 7),
+          population: rabbits.length,
+          date: currentMonth
+        })
+      }
+      
+      console.log('Population trends generated:', trends)
+      return trends
+      
+    } catch (error) {
+      console.error('Error fetching population trends:', error)
+      return []
+    }
+  }
+
+  async getWeeklyRevenueTrends(weeks = 4) {
+    try {
+      console.log('Fetching weekly revenue trends...')
+      
+      // Get current user
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return []
+      }
+
+      // Get revenue transactions for the user from the past month
+      const now = new Date()
+      const pastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+      
+      const { data: transactions, error: transactionsError } = await this.supabase
+        .from('transactions')
+        .select('amount, date, type')
+        .eq('user_id', user.id)
+        .eq('type', 'revenue')
+        .gte('date', pastMonth.toISOString().split('T')[0])
+        .order('date', { ascending: true })
+
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError)
+        return []
+      }
+
+      // Generate weekly revenue trends
+      const trends = []
+      const currentWeek = Math.ceil(now.getDate() / 7)
+      
+      // Calculate revenue for each week of the current month
+      for (let week = 1; week <= weeks; week++) {
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), (week - 1) * 7 + 1)
+        const endOfWeek = new Date(now.getFullYear(), now.getMonth(), week * 7)
+        
+        // Filter transactions for this week
+        const weekTransactions = transactions.filter(t => {
+          const transactionDate = new Date(t.date)
+          return transactionDate >= startOfWeek && transactionDate <= endOfWeek
+        })
+        
+        const weekRevenue = weekTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+        
+        trends.push({
+          week: `Week ${week}`,
+          revenue: weekRevenue,
+          transactions: weekTransactions.length
+        })
+      }
+      
+      // Ensure we always have at least current week data for chart display
+      if (trends.length === 0 || trends.every(t => t.revenue === 0)) {
+        // Fallback: estimate weekly revenue from monthly expenses
+        const monthlyExpenses = await this.getMonthlyExpenses()
+        const estimatedWeeklyRevenue = (monthlyExpenses * 2.5) / 4 // Rough estimate
+        
+        trends.push({
+          week: `Week ${currentWeek}`,
+          revenue: estimatedWeeklyRevenue,
+          transactions: 0
+        })
+      }
+      
+      console.log('Weekly revenue trends generated:', trends)
+      return trends
+      
+    } catch (error) {
+      console.error('Error fetching weekly revenue trends:', error)
+      return []
+    }
   }
 
   async getRecentActivities() {
