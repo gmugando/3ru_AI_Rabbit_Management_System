@@ -10,6 +10,10 @@
           <i class="pi pi-calendar"></i>
           Date Range
         </button>
+        <router-link to="/finance/reports" class="secondary-button">
+          <i class="pi pi-chart-bar"></i>
+          View Reports
+        </router-link>
         <router-link to="/finance/add-transaction" class="primary-button">
           <i class="pi pi-plus"></i>
           Add Transaction
@@ -76,10 +80,11 @@
         <div class="card-header">
           <h2>Financial Overview</h2>
           <div class="header-filters">
-            <select class="form-control">
-              <option>Last 6 Months</option>
-              <option>Last Year</option>
-              <option>Year to Date</option>
+            <select class="form-control" v-model="analyticsTimeframe" @change="loadFinancialAnalytics">
+              <option value="3">Last 3 Months</option>
+              <option value="6">Last 6 Months</option>
+              <option value="12">Last Year</option>
+              <option value="24">Last 2 Years</option>
             </select>
           </div>
         </div>
@@ -135,63 +140,196 @@
         <div class="card-header">
           <h2>Expense Breakdown</h2>
           <div class="header-filters">
-            <select class="form-control">
-              <option>This Month</option>
-              <option>Last Month</option>
-              <option>Last Quarter</option>
+            <select class="form-control" v-model="expenseTimeframe" @change="loadFinancialAnalytics">
+              <option value="1">This Month</option>
+              <option value="3">Last 3 Months</option>
+              <option value="6">Last 6 Months</option>
             </select>
           </div>
         </div>
-        <div class="expense-categories">
-          <div class="category-item">
+        
+        <div v-if="analyticsLoading" class="loading-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading expense data...</span>
+        </div>
+        
+        <div v-else-if="analyticsError" class="error-state">
+          <p>{{ analyticsError }}</p>
+          <button @click="loadFinancialAnalytics" class="retry-btn">Retry</button>
+        </div>
+        
+        <div v-else-if="expenseCategories.length === 0" class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <h3>No expense data</h3>
+          <p>Add transactions to see expense breakdown</p>
+        </div>
+        
+        <div v-else class="expense-categories">
+          <div v-for="category in expenseCategories" :key="category.name" class="category-item">
             <div class="category-info">
-              <h4>Feed & Supplies</h4>
+              <h4>{{ category.name }}</h4>
               <div class="progress-bar">
-                <div class="progress" style="width: 45%"></div>
+                <div class="progress" :style="{ width: category.percentage + '%' }"></div>
               </div>
             </div>
             <div class="category-amount">
-              <span class="amount">$1,926</span>
-              <span class="percentage">45%</span>
+              <span class="amount">{{ formatCurrency(category.amount) }}</span>
+              <span class="percentage">{{ category.percentage.toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Farm Cost Analytics -->
+      <div class="content-card full-width">
+        <div class="card-header">
+          <h2>Farm Cost Analytics</h2>
+          <div class="header-filters">
+            <select class="form-control" v-model="analyticsTimeframe" @change="loadFinancialAnalytics">
+              <option value="3">Last 3 Months</option>
+              <option value="6">Last 6 Months</option>
+              <option value="12">Last 12 Months</option>
+            </select>
+          </div>
+        </div>
+        
+        <div v-if="analyticsLoading" class="loading-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading financial analytics...</span>
+        </div>
+        
+        <div v-else-if="analyticsError" class="error-message">
+          {{ analyticsError }}
+          <button @click="loadFinancialAnalytics" class="retry-button">Retry</button>
+        </div>
+        
+        <div v-else class="analytics-grid">
+          <!-- Cost Per Rabbit -->
+          <div class="analytics-card">
+            <div class="analytics-header">
+              <h3>Cost Per Rabbit</h3>
+              <div class="analytics-icon cost-per-rabbit">
+                <i class="pi pi-calculator"></i>
+              </div>
+            </div>
+            <div class="analytics-content">
+              <div class="main-metric">{{ formatCurrency(farmAnalytics.costPerRabbit?.costPerRabbit || 0) }}</div>
+              <div class="sub-metrics">
+                <div class="sub-metric">
+                  <span class="label">Monthly</span>
+                  <span class="value">{{ formatCurrency(farmAnalytics.costPerRabbit?.monthlyCostPerRabbit || 0) }}</span>
+                </div>
+                <div class="sub-metric">
+                  <span class="label">Total Rabbits</span>
+                  <span class="value">{{ farmAnalytics.costPerRabbit?.rabbitCount || 0 }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="category-item">
-            <div class="category-info">
-              <h4>Equipment</h4>
-              <div class="progress-bar">
-                <div class="progress" style="width: 25%"></div>
+          <!-- Profitability -->
+          <div class="analytics-card">
+            <div class="analytics-header">
+              <h3>Profitability</h3>
+              <div class="analytics-icon profitability">
+                <i class="pi pi-chart-line"></i>
               </div>
             </div>
-            <div class="category-amount">
-              <span class="amount">$1,070</span>
-              <span class="percentage">25%</span>
+            <div class="analytics-content">
+              <div class="main-metric" :class="{ 'negative': farmAnalytics.profitability?.profitMargin < 0 }">
+                {{ formatPercentage(farmAnalytics.profitability?.profitMargin || 0) }}
+              </div>
+              <div class="sub-metrics">
+                <div class="sub-metric">
+                  <span class="label">ROI</span>
+                  <span class="value" :class="{ 'negative': farmAnalytics.profitability?.roi < 0 }">
+                    {{ formatPercentage(farmAnalytics.profitability?.roi || 0) }}
+                  </span>
+                </div>
+                <div class="sub-metric">
+                  <span class="label">Monthly Profit</span>
+                  <span class="value" :class="{ 'negative': farmAnalytics.profitability?.monthlyAverageProfit < 0 }">
+                    {{ formatCurrency(farmAnalytics.profitability?.monthlyAverageProfit || 0) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="category-item">
-            <div class="category-info">
-              <h4>Veterinary</h4>
-              <div class="progress-bar">
-                <div class="progress" style="width: 20%"></div>
+          <!-- Farm Activity Costs -->
+          <div class="analytics-card">
+            <div class="analytics-header">
+              <h3>Direct Farm Costs</h3>
+              <div class="analytics-icon farm-costs">
+                <i class="pi pi-home"></i>
               </div>
             </div>
-            <div class="category-amount">
-              <span class="amount">$856</span>
-              <span class="percentage">20%</span>
+            <div class="analytics-content">
+              <div class="main-metric">{{ formatCurrency(farmAnalytics.farmCosts?.totalDirectCosts || 0) }}</div>
+              <div class="sub-metrics">
+                <div class="sub-metric">
+                  <span class="label">Health</span>
+                  <span class="value">{{ formatCurrency(farmAnalytics.farmCosts?.health?.total || 0) }}</span>
+                </div>
+                <div class="sub-metric">
+                  <span class="label">Feed</span>
+                  <span class="value">{{ formatCurrency(farmAnalytics.farmCosts?.feed?.total || 0) }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="category-item">
-            <div class="category-info">
-              <h4>Other</h4>
-              <div class="progress-bar">
-                <div class="progress" style="width: 10%"></div>
+          <!-- Forecast -->
+          <div class="analytics-card">
+            <div class="analytics-header">
+              <h3>Next Month Forecast</h3>
+              <div class="analytics-icon forecast">
+                <i class="pi pi-forward"></i>
               </div>
             </div>
-            <div class="category-amount">
-              <span class="amount">$428</span>
-              <span class="percentage">10%</span>
+            <div class="analytics-content">
+              <div class="main-metric" :class="{ 'negative': farmAnalytics.forecast?.nextMonthProfit < 0 }">
+                {{ formatCurrency(farmAnalytics.forecast?.nextMonthProfit || 0) }}
+              </div>
+              <div class="sub-metrics">
+                <div class="sub-metric">
+                  <span class="label">Revenue</span>
+                  <span class="value">{{ formatCurrency(farmAnalytics.forecast?.nextMonthRevenue || 0) }}</span>
+                </div>
+                <div class="sub-metric">
+                  <span class="label">Confidence</span>
+                  <span class="value confidence" :class="farmAnalytics.forecast?.confidence">
+                    {{ farmAnalytics.forecast?.confidence || 'low' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div v-if="!analyticsLoading && farmAnalytics.categoryBreakdown" class="detailed-breakdown">
+          <h3>Category Performance</h3>
+          <div class="breakdown-grid">
+            <div v-for="(category, name) in farmAnalytics.categoryBreakdown" :key="name" class="breakdown-item">
+              <div class="breakdown-header">
+                <span class="category-name">{{ name }}</span>
+                <span class="category-total">{{ formatCurrency((category.revenue || 0) - (category.expenses || 0)) }}</span>
+              </div>
+              <div class="breakdown-details">
+                <div class="breakdown-metric">
+                  <span class="metric-label">Revenue</span>
+                  <span class="metric-value revenue">{{ formatCurrency(category.revenue || 0) }}</span>
+                </div>
+                <div class="breakdown-metric">
+                  <span class="metric-label">Expenses</span>
+                  <span class="metric-value expense">{{ formatCurrency(category.expenses || 0) }}</span>
+                </div>
+                <div class="breakdown-metric">
+                  <span class="metric-label">Transactions</span>
+                  <span class="metric-value">{{ category.count || 0 }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -201,9 +339,11 @@
 </template>
 
 <script>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import Chart from 'chart.js/auto'
 import { supabase } from '@/supabase'
+import currencyService from '@/services/currency'
+import { financialIntegration } from '@/services/financialIntegration'
 
 export default {
   name: 'AppFinance',
@@ -222,6 +362,68 @@ export default {
       expensesChange: 0,
       profitChange: 0
     })
+
+    // Analytics state
+    const farmAnalytics = ref({
+      categoryBreakdown: {},
+      monthlyTrends: [],
+      totalRevenue: 0,
+      totalExpenses: 0,
+      netProfit: 0
+    })
+    const analyticsLoading = ref(false)
+    const analyticsError = ref('')
+    const analyticsTimeframe = ref(6)
+    const expenseTimeframe = ref(1) // For expense breakdown filter
+    
+    // Chart instance
+    let chartInstance = null
+
+    // Computed property for expense categories
+    const expenseCategories = computed(() => {
+      // Add null checks and fallbacks
+      if (!farmAnalytics.value || !farmAnalytics.value.categoryBreakdown) {
+        return []
+      }
+      
+      try {
+        const categoryBreakdown = farmAnalytics.value.categoryBreakdown
+        if (typeof categoryBreakdown !== 'object' || categoryBreakdown === null) {
+          return []
+        }
+        
+        const categories = Object.entries(categoryBreakdown)
+          .map(([name, data]) => ({
+            name: formatCategoryName(name),
+            amount: (data && typeof data === 'object' && data.expenses) ? data.expenses : 0,
+            count: (data && typeof data === 'object' && data.count) ? data.count : 0
+          }))
+          .filter(cat => cat.amount > 0)
+          .sort((a, b) => b.amount - a.amount)
+        
+        const totalExpenses = categories.reduce((sum, cat) => sum + cat.amount, 0)
+        
+        return categories.map(cat => ({
+          ...cat,
+          percentage: totalExpenses > 0 ? (cat.amount / totalExpenses) * 100 : 0
+        })).slice(0, 6) // Top 6 categories
+      } catch (error) {
+        console.error('Error processing expense categories:', error)
+        return []
+      }
+    })
+
+    // Format category names for display
+    const formatCategoryName = (category) => {
+      const nameMap = {
+        'Veterinary & Health': 'Veterinary',
+        'Feed & Supplies': 'Feed & Supplies',
+        'Livestock Sales': 'Livestock Sales',
+        'Equipment': 'Equipment',
+        'Other': 'Other'
+      }
+      return nameMap[category] || category
+    }
 
     const financeData = {
       labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -403,12 +605,7 @@ export default {
 
     // Format currency
     const formatCurrency = (amount) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)
+      return currencyService.format(amount)
     }
 
     // Format percentage
@@ -416,18 +613,89 @@ export default {
       return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
     }
 
-    onMounted(() => {
-      // Initialize chart
-      if (financeChart.value) {
-        new Chart(financeChart.value, {
-          type: 'line',
-          data: financeData,
-          options: chartOptions
+    // Update chart with real data
+    const updateFinancialChart = () => {
+      if (!chartInstance || !farmAnalytics.value || !farmAnalytics.value.monthlyTrends) return
+
+      try {
+        const trends = farmAnalytics.value.monthlyTrends
+        if (!Array.isArray(trends) || trends.length === 0) return
+
+        // Update chart data with safety checks
+        chartInstance.data.labels = trends.map(t => {
+          try {
+            const date = new Date(t.month)
+            return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          } catch (dateError) {
+            console.warn('Invalid date in trend data:', t.month)
+            return 'Unknown'
+          }
         })
+        
+        chartInstance.data.datasets[0].data = trends.map(t => parseFloat(t.revenue) || 0)
+        chartInstance.data.datasets[1].data = trends.map(t => parseFloat(t.expenses) || 0)
+        
+        chartInstance.update()
+      } catch (error) {
+        console.error('Error updating financial chart:', error)
       }
-      
-      // Fetch transactions
-      fetchRecentTransactions()
+    }
+
+    // Load comprehensive financial analytics
+    const loadFinancialAnalytics = async () => {
+      try {
+        analyticsLoading.value = true
+        analyticsError.value = ''
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('User not authenticated')
+        }
+
+        const analytics = await financialIntegration.getFinancialAnalytics(user.id, analyticsTimeframe.value)
+        
+        // Safely assign analytics data
+        if (analytics && typeof analytics === 'object') {
+          farmAnalytics.value = analytics
+          
+          // Update the chart with real data after a small delay to ensure DOM is ready
+          setTimeout(() => {
+            updateFinancialChart()
+          }, 100)
+        } else {
+          console.warn('Invalid analytics data received:', analytics)
+          farmAnalytics.value = {}
+        }
+
+        console.log('Financial Analytics loaded:', analytics)
+      } catch (error) {
+        console.error('Error loading financial analytics:', error)
+        analyticsError.value = 'Failed to load financial analytics. Please try again.'
+      } finally {
+        analyticsLoading.value = false
+      }
+    }
+
+    onMounted(async () => {
+      try {
+        // Initialize currency service
+        await currencyService.initialize()
+        
+        // Initialize chart
+        if (financeChart.value) {
+          chartInstance = new Chart(financeChart.value, {
+            type: 'line',
+            data: financeData,
+            options: chartOptions
+          })
+        }
+        
+        // Fetch transactions and analytics
+        await fetchRecentTransactions()
+        await loadFinancialAnalytics()
+      } catch (error) {
+        console.error('Error during component initialization:', error)
+      }
     })
 
     return {
@@ -436,8 +704,16 @@ export default {
       isLoading,
       errorMessage,
       financialStats,
+      farmAnalytics,
+      analyticsLoading,
+      analyticsError,
+      analyticsTimeframe,
+      expenseTimeframe,
+      expenseCategories,
       formatCurrency,
-      formatPercentage
+      formatPercentage,
+      loadFinancialAnalytics,
+      updateFinancialChart
     }
   }
 }
@@ -803,5 +1079,267 @@ export default {
   border-radius: 8px;
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #ef4444;
+}
+
+.error-state p {
+  margin-bottom: 1rem;
+}
+
+.retry-btn {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.retry-btn:hover {
+  background: #2563eb;
+}
+
+/* Financial Analytics Styles */
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.analytics-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.analytics-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.analytics-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.analytics-icon.cost-per-rabbit {
+  background: #ddd6fe;
+  color: #7c3aed;
+}
+
+.analytics-icon.profitability {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.analytics-icon.farm-costs {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.analytics-icon.forecast {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.analytics-content .main-metric {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.analytics-content .main-metric.negative {
+  color: #dc2626;
+}
+
+.sub-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.sub-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sub-metric .label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.sub-metric .value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.sub-metric .value.negative {
+  color: #dc2626;
+}
+
+.sub-metric .value.confidence {
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.confidence.high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.confidence.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.confidence.low {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.detailed-breakdown {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.detailed-breakdown h3 {
+  margin: 0 0 1.5rem 0;
+  color: #1e293b;
+  font-size: 1.25rem;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.breakdown-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.category-name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.category-total {
+  font-weight: 700;
+  color: #059669;
+}
+
+.breakdown-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.breakdown-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.metric-value {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.metric-value.revenue {
+  color: #059669;
+}
+
+.metric-value.expense {
+  color: #dc2626;
+}
+
+.retry-button {
+  margin-left: 1rem;
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.retry-button:hover {
+  background: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .sub-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .analytics-content .main-metric {
+    font-size: 1.5rem;
+  }
 }
 </style> 

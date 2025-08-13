@@ -79,12 +79,42 @@ const routes = [
   {
     path: '/feeding/schedule',
     name: 'FeedingSchedule',
+    component: () => import('@/views/feeding/FeedingScheduleList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeding/schedule/add',
+    name: 'AddFeedingSchedule',
     component: () => import('@/views/feeding/FeedingScheduleForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeding/schedule/:id/edit',
+    name: 'EditFeedingSchedule',
+    component: () => import('@/views/feeding/FeedingScheduleForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeding/dashboard',
+    name: 'FeedingScheduleDashboard',
+    component: () => import('@/views/feeding/FeedingScheduleDashboard.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/feeding/add-record',
     name: 'AddFeedRecord',
+    component: () => import('@/views/feeding/FeedRecordForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeding/records',
+    name: 'FeedRecordList',
+    component: () => import('@/views/feeding/FeedRecordList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/feeding/record/:id/edit',
+    name: 'EditFeedRecord',
     component: () => import('@/views/feeding/FeedRecordForm.vue'),
     meta: { requiresAuth: true }
   },
@@ -95,10 +125,41 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/weight-tracking/add',
+    name: 'AddWeightRecord',
+    component: () => import('@/views/weight/WeightRecordForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/weight-tracking/records',
+    name: 'WeightRecordsList',
+    component: () => import('@/views/weight/WeightRecordsList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/health-data',
     name: 'HealthData',
     component: () => import('@/views/health/HealthDataManagement.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/health-data/add',
+    name: 'AddHealthRecord',
+    component: () => import('@/views/health/HealthRecordForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/health-data/records',
+    name: 'HealthRecordsList',
+    component: () => import('@/views/health/HealthRecordsList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/health-data/edit/:id',
+    name: 'EditHealthRecord',
+    component: () => import('@/views/health/HealthRecordForm.vue'),
+    meta: { requiresAuth: true },
+    props: true
   },
   {
     path: '/finance',
@@ -119,9 +180,34 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/finance/reports',
+    name: 'FinancialReports',
+    component: () => import('@/views/finance/FinancialReports.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/schedule',
     name: 'Schedule',
     component: () => import('@/views/schedule/AppSchedule.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/schedule/add',
+    name: 'AddScheduleEvent',
+    component: () => import('@/views/schedule/ScheduleEventForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/schedule/edit/:id',
+    name: 'EditScheduleEvent',
+    component: () => import('@/views/schedule/ScheduleEventForm.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
+  {
+    path: '/schedule/events',
+    name: 'ScheduleEventsList',
+    component: () => import('@/views/schedule/ScheduleEventsList.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -129,6 +215,25 @@ const routes = [
     name: 'Reports',
     component: () => import('@/views/reports/AppReports.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/reports/schedules',
+    name: 'ReportSchedules',
+    component: () => import('@/views/reports/ReportSchedules.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reports/schedules/add',
+    name: 'AddReportSchedule',
+    component: () => import('@/views/reports/ReportScheduleForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reports/schedules/:id/edit',
+    name: 'EditReportSchedule',
+    component: () => import('@/views/reports/ReportScheduleForm.vue'),
+    meta: { requiresAuth: true },
+    props: true
   },
   {
     path: '/users',

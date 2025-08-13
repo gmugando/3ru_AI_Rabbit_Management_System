@@ -126,7 +126,7 @@
               <td>{{ transaction.description }}</td>
               <td>{{ formatCategory(transaction.category) }}</td>
               <td :class="['amount', transaction.type]">
-                {{ transaction.type === 'revenue' ? '+' : '-' }}${{ formatAmount(transaction.amount) }}
+                {{ transaction.type === 'revenue' ? '+' : '-' }}{{ formatCurrency(transaction.amount) }}
               </td>
               <td class="actions">
                 <button class="action-btn view" @click="viewTransaction(transaction)">
@@ -179,7 +179,7 @@
           <p class="transaction-details">
             <strong>Date:</strong> {{ formatDate(transactionToDelete?.date) }}<br>
             <strong>Description:</strong> {{ transactionToDelete?.description }}<br>
-            <strong>Amount:</strong> {{ transactionToDelete?.type === 'revenue' ? '+' : '-' }}${{ formatAmount(transactionToDelete?.amount) }}
+            <strong>Amount:</strong> {{ transactionToDelete?.type === 'revenue' ? '+' : '-' }}{{ formatCurrency(transactionToDelete?.amount) }}
           </p>
         </div>
         <div class="modal-footer">
@@ -197,6 +197,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import currencyService from '@/services/currency'
 
 export default {
   name: 'TransactionList',
@@ -362,6 +363,10 @@ export default {
       return parseFloat(amount).toFixed(2)
     }
 
+    const formatCurrency = (amount) => {
+      return currencyService.format(amount)
+    }
+
     const formatCategory = (category) => {
       if (!category) return ''
       
@@ -423,7 +428,8 @@ export default {
     }
 
     // Fetch transactions on component mount
-    onMounted(() => {
+    onMounted(async () => {
+      await currencyService.initialize()
       fetchTransactions()
     })
 
@@ -444,6 +450,7 @@ export default {
       sortBy,
       formatDate,
       formatAmount,
+      formatCurrency,
       formatCategory,
       viewTransaction,
       editTransaction,

@@ -2,13 +2,13 @@
   <div class="feed-record-form-page">
     <div class="page-header">
       <div>
-        <h1>Add Feed Record</h1>
+        <h1>{{ isEditMode ? 'Edit Feed Record' : 'Add Feed Record' }}</h1>
         <p class="subtitle">Record feed consumption and stock updates</p>
       </div>
       <div class="header-actions">
-        <router-link to="/feeding" class="secondary-button">
+        <router-link to="/feeding/records" class="secondary-button">
           <i class="pi pi-arrow-left"></i>
-          Back to Feeding
+          Back to Records
         </router-link>
       </div>
     </div>
@@ -103,6 +103,56 @@
         </div>
 
         <div class="form-section">
+          <h2>Cost Information</h2>
+          <p class="section-description">Add cost data to track accurate feeding expenses (optional)</p>
+
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="costPerKg">Cost per kg</label>
+              <div class="input-with-icon">
+                <input 
+                  type="number" 
+                  id="costPerKg" 
+                  v-model="form.costPerKg" 
+                  class="form-control"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  @input="calculateTotalCost"
+                >
+                <span class="input-icon">{{ costPerKgLabel }}</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="totalCost">Total Cost</label>
+              <div class="input-with-icon">
+                <input 
+                  type="number" 
+                  id="totalCost" 
+                  v-model="form.totalCost" 
+                  class="form-control"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  @input="calculateCostPerKg"
+                >
+                <span class="input-icon">{{ totalCostLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cost-notes">
+            <p class="help-text">
+              <i class="pi pi-info-circle"></i>
+              <strong>Tip:</strong> For stock updates, enter purchase costs. For consumption, costs help track feeding expenses.
+              Enter either cost per kg OR total cost - the other will be calculated automatically.
+            </p>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h2>Additional Information</h2>
           
           <div class="form-group">
@@ -129,11 +179,11 @@
         </div>
 
         <div class="form-actions">
-          <router-link to="/feeding" class="secondary-button">
+          <router-link to="/feeding/records" class="secondary-button">
             Cancel
           </router-link>
           <button type="submit" class="primary-button" :disabled="isSubmitting">
-            {{ isSubmitting ? 'Adding Record...' : 'Add Record' }}
+            {{ isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Record' : 'Add Record') }}
           </button>
         </div>
       </form>
@@ -142,16 +192,27 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
+import currencyService from '@/services/currency'
+import { financialIntegration } from '@/services/financialIntegration'
 
 export default {
   name: 'FeedRecordForm',
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const isSubmitting = ref(false)
     const errorMessage = ref('')
+    const isEditMode = ref(false)
+    const recordId = ref(null)
+    const currencySymbol = ref('R')
+    const currencyCode = ref('ZAR')
+
+    // Computed properties for currency display
+    const costPerKgLabel = computed(() => `${currencySymbol.value}/kg`)
+    const totalCostLabel = computed(() => currencySymbol.value)
 
     const form = reactive({
       feedType: 'adult_rabbit_feed',
@@ -159,17 +220,87 @@ export default {
       recordType: 'consumption',
       amount: '',
       date: new Date().toISOString().split('T')[0],
+      costPerKg: '',
+      totalCost: '',
       sections: '',
       notes: ''
     })
 
-    onMounted(() => {
-      console.log('Form mounted:', form)
+    // Load record for edit mode
+    const loadRecord = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('feed_records')
+          .select('*')
+          .eq('id', recordId.value)
+          .single()
+
+        if (error) throw error
+
+        if (data) {
+          form.feedType = data.feed_type
+          form.feedBrand = data.feed_brand
+          form.recordType = data.record_type
+          form.amount = data.amount
+          form.date = data.date
+          form.costPerKg = data.cost_per_kg || ''
+          form.totalCost = data.total_cost || ''
+          form.sections = data.sections || ''
+          form.notes = data.notes || ''
+        }
+      } catch (err) {
+        errorMessage.value = err.message
+        console.error('Error loading record:', err)
+      }
+    }
+
+    // Cost calculation functions
+    const calculateTotalCost = () => {
+      if (form.costPerKg && form.amount) {
+        const calculated = parseFloat(form.costPerKg) * parseFloat(form.amount)
+        form.totalCost = calculated.toFixed(2)
+      }
+    }
+
+    const calculateCostPerKg = () => {
+      if (form.totalCost && form.amount) {
+        const calculated = parseFloat(form.totalCost) / parseFloat(form.amount)
+        form.costPerKg = calculated.toFixed(2)
+      }
+    }
+
+    // Initialize currency
+    const initializeCurrency = async () => {
+      try {
+        await currencyService.initialize()
+        const currentCurrency = currencyService.getCurrentCurrency()
+        
+        currencySymbol.value = currentCurrency.symbol
+        currencyCode.value = currentCurrency.code
+      } catch (error) {
+        console.error('Error initializing currency service:', error)
+        // Keep default values - use ZAR as default to match currency service
+        currencySymbol.value = 'R'
+        currencyCode.value = 'ZAR'
+      }
+    }
+
+    onMounted(async () => {
+      // Initialize currency service first
+      await initializeCurrency()
+
+      // Check if we're in edit mode
+      if (route.params.id) {
+        isEditMode.value = true
+        recordId.value = route.params.id
+        loadRecord()
+      }
+
     })
 
     const handleSubmit = async () => {
       try {
-        console.log('Submitting form:', form)
+
         isSubmitting.value = true
         errorMessage.value = ''
 
@@ -177,31 +308,65 @@ export default {
         const { data: { user } } = await supabase.auth.getUser()
         
         if (!user) {
-          throw new Error('You must be logged in to add a feed record')
+          throw new Error('You must be logged in to save a feed record')
         }
 
-        // Add feed record to Supabase
-        const { data, error } = await supabase
-          .from('feed_records')
-          .insert([
-            {
-              feed_type: form.feedType,
-              feed_brand: form.feedBrand,
-              record_type: form.recordType,
-              amount: parseFloat(form.amount),
-              date: form.date,
-              sections: form.sections || null,
-              notes: form.notes || null,
-              user_id: user.id
-            }
-          ])
-          .select()
+        const recordData = {
+          feed_type: form.feedType,
+          feed_brand: form.feedBrand,
+          record_type: form.recordType,
+          amount: parseFloat(form.amount),
+          date: form.date,
+          cost_per_kg: form.costPerKg ? parseFloat(form.costPerKg) : null,
+          total_cost: form.totalCost ? parseFloat(form.totalCost) : null,
+          sections: form.sections || null,
+          notes: form.notes || null,
+          user_id: user.id
+        }
+
+        let data, error
+
+        if (isEditMode.value) {
+          // Update existing record
+          const result = await supabase
+            .from('feed_records')
+            .update(recordData)
+            .eq('id', recordId.value)
+            .select()
+          
+          data = result.data
+          error = result.error
+        } else {
+          // Insert new record
+          const result = await supabase
+            .from('feed_records')
+            .insert([recordData])
+            .select()
+          
+          data = result.data
+          error = result.error
+        }
 
         if (error) throw error
 
-        console.log('Record added successfully:', data)
-        // Redirect back to feeding page
-        router.push('/feeding')
+        console.log(`Record ${isEditMode.value ? 'updated' : 'added'} successfully:`, data)
+        
+        // Create financial transaction for feed purchases (stock updates with costs)
+        if (!isEditMode.value && data && data.length > 0) {
+          try {
+            const savedRecord = data[0]
+            if (savedRecord.record_type === 'stock_update' && savedRecord.total_cost && savedRecord.total_cost > 0) {
+              await financialIntegration.createFeedExpenseTransaction(savedRecord, user.id)
+              console.log('Financial transaction created for feed purchase')
+            }
+          } catch (financialError) {
+            console.error('Failed to create financial transaction:', financialError)
+            // Don't fail the whole operation if financial transaction creation fails
+          }
+        }
+        
+        // Redirect back to records list
+        router.push('/feeding/records')
         
       } catch (error) {
         console.error('Error adding feed record:', error)
@@ -215,7 +380,14 @@ export default {
       form,
       isSubmitting,
       errorMessage,
-      handleSubmit
+      isEditMode,
+      currencySymbol,
+      currencyCode,
+      costPerKgLabel,
+      totalCostLabel,
+      handleSubmit,
+      calculateTotalCost,
+      calculateCostPerKg
     }
   }
 }
@@ -281,6 +453,40 @@ export default {
   margin: 0 0 0.5rem 0;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.section-description {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0 0 1rem 0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.cost-notes {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.help-text {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.help-text i {
+  color: #3b82f6;
+  margin-top: 0.125rem;
 }
 
 .form-group {
@@ -433,6 +639,19 @@ textarea.form-control {
   .primary-button, .secondary-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .cost-notes {
+    padding: 0.75rem;
+  }
+
+  .help-text {
+    font-size: 0.8rem;
   }
 }
 </style> 

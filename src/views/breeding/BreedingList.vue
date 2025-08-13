@@ -188,15 +188,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Upcoming Breeding Events -->
+    <UpcomingEventsWidget :limit="5" :event-types="['breeding']" />
   </div>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/supabase'
+import UpcomingEventsWidget from '@/components/UpcomingEventsWidget.vue'
 
 export default {
   name: 'BreedingList',
+  components: {
+    UpcomingEventsWidget
+  },
   setup() {
     const breedingPlans = ref([])
     const isLoading = ref(true)
