@@ -217,6 +217,25 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/reports/schedules',
+    name: 'ReportSchedules',
+    component: () => import('@/views/reports/ReportSchedules.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reports/schedules/add',
+    name: 'AddReportSchedule',
+    component: () => import('@/views/reports/ReportScheduleForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/reports/schedules/:id/edit',
+    name: 'EditReportSchedule',
+    component: () => import('@/views/reports/ReportScheduleForm.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
+  {
     path: '/users',
     name: 'Users',
     component: () => import('@/views/users/UserManagement.vue'),

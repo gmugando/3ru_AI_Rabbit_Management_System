@@ -16,6 +16,10 @@
           <i class="pi pi-download"></i>
           Export Report
         </button>
+        <router-link to="/reports/schedules" class="secondary-button">
+          <i class="pi pi-calendar"></i>
+          Schedule Reports
+        </router-link>
       </div>
     </div>
 
@@ -291,6 +295,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Export Dialog -->
+    <ExportDialog 
+      :show="showExportDialog"
+      default-format="pdf"
+      @confirm="handleExportConfirm"
+      @close="handleExportClose"
+    />
   </div>
 </template>
 
@@ -300,6 +312,7 @@ import Chart from 'chart.js/auto'
 import { reportsService } from '@/services/reportsService'
 import { supabase } from '@/supabase'
 import currencyService from '@/services/currency'
+import { exportService } from '@/services/exportService'
 
 export default {
   name: 'AppReports',
@@ -538,9 +551,31 @@ export default {
       }
     }
 
-    const exportReport = () => {
-      // Placeholder for export functionality
-      alert('Export functionality will be implemented soon!')
+    const showExportDialog = ref(false)
+
+    const exportReport = async () => {
+      if (!currentReport.value) {
+        alert('No report data available to export')
+        return
+      }
+      showExportDialog.value = true
+    }
+
+    const handleExportConfirm = async (format) => {
+      try {
+        await exportService.exportFarmReport(currentReport.value, currentReportType.value, format)
+        showExportDialog.value = false
+        
+        // Show success message
+        console.log(`${currentReportType.value} report exported successfully as ${format.toUpperCase()}`)
+      } catch (error) {
+        console.error('Failed to export report:', error)
+        alert('Failed to export report. Please try again.')
+      }
+    }
+
+    const handleExportClose = () => {
+      showExportDialog.value = false
     }
 
     const formatCurrency = (amount) => {
@@ -591,6 +626,9 @@ export default {
       changeTimeframe,
       loadReportData,
       exportReport,
+      showExportDialog,
+      handleExportConfirm,
+      handleExportClose,
       formatCurrency,
       formatNumber,
       formatPercentage

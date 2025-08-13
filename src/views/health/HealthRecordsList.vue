@@ -433,6 +433,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Export Dialog -->
+    <ExportDialog 
+      :show="showExportDialog"
+      default-format="csv"
+      @confirm="handleExportConfirm"
+      @close="handleExportClose"
+    />
   </div>
 </template>
 
@@ -440,6 +448,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import { exportService } from '@/services/exportService'
 
 export default {
   name: 'HealthRecordsList',
@@ -705,9 +714,31 @@ export default {
       }
     }
     
-    const exportRecords = () => {
-      // TODO: Implement export functionality
-      console.log('Export records')
+    const showExportDialog = ref(false)
+
+    const exportRecords = async () => {
+      if (healthRecords.value.length === 0) {
+        alert('No records to export')
+        return
+      }
+      showExportDialog.value = true
+    }
+
+    const handleExportConfirm = async (format) => {
+      try {
+        await exportService.exportHealthRecords(healthRecords.value, format)
+        showExportDialog.value = false
+        
+        // Show success message
+        console.log(`Health records exported successfully as ${format.toUpperCase()}`)
+      } catch (error) {
+        console.error('Failed to export health records:', error)
+        alert('Failed to export records. Please try again.')
+      }
+    }
+
+    const handleExportClose = () => {
+      showExportDialog.value = false
     }
     
     onMounted(() => {
@@ -750,7 +781,10 @@ export default {
       editFromModal,
       cancelDelete,
       confirmDelete,
-      exportRecords
+      exportRecords,
+      showExportDialog,
+      handleExportConfirm,
+      handleExportClose
     }
   }
 }

@@ -193,6 +193,14 @@
         </button>
       </div>
     </div>
+
+    <!-- Export Dialog -->
+    <ExportDialog 
+      :show="showExportDialog"
+      default-format="csv"
+      @confirm="handleExportConfirm"
+      @close="handleExportClose"
+    />
   </div>
 </template>
 
@@ -200,6 +208,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import { exportService } from '@/services/exportService'
 
 export default {
   name: 'WeightRecordsList',
@@ -365,9 +374,31 @@ export default {
       console.log('Delete record:', record)
     }
     
-    const exportRecords = () => {
-      // TODO: Implement export functionality
-      console.log('Export records')
+    const showExportDialog = ref(false)
+
+    const exportRecords = async () => {
+      if (weightRecords.value.length === 0) {
+        alert('No records to export')
+        return
+      }
+      showExportDialog.value = true
+    }
+
+    const handleExportConfirm = async (format) => {
+      try {
+        await exportService.exportWeightRecords(weightRecords.value, format)
+        showExportDialog.value = false
+        
+        // Show success message
+        console.log(`Weight records exported successfully as ${format.toUpperCase()}`)
+      } catch (error) {
+        console.error('Failed to export weight records:', error)
+        alert('Failed to export records. Please try again.')
+      }
+    }
+
+    const handleExportClose = () => {
+      showExportDialog.value = false
     }
     
     onMounted(() => {
@@ -400,7 +431,10 @@ export default {
       viewRecord,
       editRecord,
       deleteRecord,
-      exportRecords
+      exportRecords,
+      showExportDialog,
+      handleExportConfirm,
+      handleExportClose
     }
   }
 }

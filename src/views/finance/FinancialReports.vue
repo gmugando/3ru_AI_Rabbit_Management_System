@@ -323,6 +323,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Export Dialog -->
+    <ExportDialog 
+      :show="showExportDialog"
+      default-format="pdf"
+      @confirm="handleExportConfirm"
+      @close="handleExportClose"
+    />
   </div>
 </template>
 
@@ -332,6 +340,7 @@ import Chart from 'chart.js/auto'
 import { financialIntegration } from '@/services/financialIntegration'
 import currencyService from '@/services/currency'
 import { supabase } from '@/supabase'
+import { exportService } from '@/services/exportService'
 
 export default {
   name: 'FinancialReports',
@@ -780,9 +789,46 @@ export default {
       return `Last ${reportParams.period} Month${reportParams.period !== '1' ? 's' : ''}`
     }
     
-    const exportReports = () => {
-      // Placeholder for PDF export functionality
-      alert('PDF export functionality would be implemented here')
+    const showExportDialog = ref(false)
+
+    const exportReports = async () => {
+      if (!reportData.value || !reportData.value.summary) {
+        alert('No report data available to export')
+        return
+      }
+      showExportDialog.value = true
+    }
+
+    const handleExportConfirm = async (format) => {
+      try {
+        // Get transactions data for export
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('User not authenticated')
+        }
+
+        const { data: transactions, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_deleted', false)
+          .order('date', { ascending: false })
+
+        if (error) throw error
+
+        await exportService.exportFinancialTransactions(transactions || [], format)
+        showExportDialog.value = false
+        
+        // Show success message
+        console.log(`Financial report exported successfully as ${format.toUpperCase()}`)
+      } catch (error) {
+        console.error('Failed to export financial report:', error)
+        alert('Failed to export report. Please try again.')
+      }
+    }
+
+    const handleExportClose = () => {
+      showExportDialog.value = false
     }
     
     onMounted(async () => {
@@ -805,6 +851,9 @@ export default {
       profitChart,
       generateReport,
       exportReports,
+      showExportDialog,
+      handleExportConfirm,
+      handleExportClose,
       formatCurrency,
       formatPercentage,
       formatChange,
