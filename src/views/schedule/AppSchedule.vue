@@ -10,7 +10,7 @@
           <i class="pi pi-filter"></i>
           Filter
         </button>
-        <button class="primary-button">
+        <button class="primary-button" @click="addEvent">
           <i class="pi pi-plus"></i>
           Add Event
         </button>
@@ -24,11 +24,11 @@
           <div class="calendar-header">
             <h3>Calendar</h3>
             <div class="calendar-actions">
-              <button class="nav-button">
+              <button class="nav-button" @click="navigateMonth(-1)">
                 <i class="pi pi-chevron-left"></i>
               </button>
-              <span class="current-month">March 2024</span>
-              <button class="nav-button">
+              <span class="current-month">{{ currentMonth }}</span>
+              <button class="nav-button" @click="navigateMonth(1)">
                 <i class="pi pi-chevron-right"></i>
               </button>
             </div>
@@ -40,22 +40,22 @@
             <h4>Event Types</h4>
             <div class="filter-list">
               <label class="filter-item">
-                <input type="checkbox" checked />
+                <input type="checkbox" v-model="eventFilters.breeding" />
                 <span class="filter-color breeding"></span>
                 Breeding Events
               </label>
               <label class="filter-item">
-                <input type="checkbox" checked />
+                <input type="checkbox" v-model="eventFilters.feeding" />
                 <span class="filter-color feeding"></span>
                 Feeding Schedule
               </label>
               <label class="filter-item">
-                <input type="checkbox" checked />
+                <input type="checkbox" v-model="eventFilters.health" />
                 <span class="filter-color health"></span>
                 Health Checks
               </label>
               <label class="filter-item">
-                <input type="checkbox" checked />
+                <input type="checkbox" v-model="eventFilters.maintenance" />
                 <span class="filter-color maintenance"></span>
                 Maintenance
               </label>
@@ -69,11 +69,11 @@
         <div class="content-card">
           <div class="schedule-header">
             <div class="view-options">
-              <button class="view-option active">Day</button>
-              <button class="view-option">Week</button>
-              <button class="view-option">Month</button>
+              <button class="view-option" :class="{ active: currentView === 'Day' }" @click="changeView('Day')">Day</button>
+              <button class="view-option" :class="{ active: currentView === 'Week' }" @click="changeView('Week')">Week</button>
+              <button class="view-option" :class="{ active: currentView === 'Month' }" @click="changeView('Month')">Month</button>
             </div>
-            <button class="secondary-button">
+            <button class="secondary-button" @click="goToToday">
               <i class="pi pi-calendar"></i>
               Today
             </button>
@@ -83,51 +83,49 @@
           <div class="schedule-timeline">
             <div class="timeline-header">
               <div class="date-cell current">
-                <span class="day">Mon</span>
-                <span class="date">15</span>
-              </div>
-              <div class="date-cell">
-                <span class="day">Tue</span>
-                <span class="date">16</span>
-              </div>
-              <div class="date-cell">
-                <span class="day">Wed</span>
-                <span class="date">17</span>
+                <span class="day">{{ todayDateInfo.day }}</span>
+                <span class="date">{{ todayDateInfo.date }}</span>
               </div>
             </div>
 
-            <div class="timeline-events">
-              <div class="event-item breeding">
-                <div class="event-time">09:00 AM</div>
+            <div v-if="isLoading" class="loading-state">
+              <i class="pi pi-spinner pi-spin"></i>
+              <span>Loading today's events...</span>
+            </div>
+            
+            <div v-else-if="error" class="error-state">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>{{ error }}</span>
+              <button @click="fetchTodayEvents" class="retry-btn">
+                <i class="pi pi-refresh"></i>
+                Retry
+              </button>
+            </div>
+            
+            <div v-else-if="filteredTodayEvents.length > 0" class="timeline-events">
+              <div v-for="event in filteredTodayEvents" :key="event.id" class="event-item" :class="event.event_type">
+                <div class="event-time">
+                  {{ event.start_time ? formatTime(event.start_time) : 'All Day' }}
+                </div>
                 <div class="event-content">
-                  <h4>Breeding Check</h4>
-                  <p>Pair R-001 & R-002</p>
+                  <h4>{{ event.title }}</h4>
+                  <p v-if="event.description">{{ event.description }}</p>
+                  <p v-else-if="event.rabbit_name">{{ event.rabbit_name }} ({{ event.rabbit_tag }})</p>
+                  <p v-else-if="event.location">{{ event.location }}</p>
+                </div>
+                <div class="event-status" v-if="event.priority === 'high' || event.priority === 'urgent'">
+                  <span class="priority-badge" :class="event.priority">{{ event.priority }}</span>
                 </div>
               </div>
-
-              <div class="event-item feeding">
-                <div class="event-time">10:30 AM</div>
-                <div class="event-content">
-                  <h4>Morning Feed</h4>
-                  <p>Section A & B</p>
-                </div>
-              </div>
-
-              <div class="event-item health">
-                <div class="event-time">02:00 PM</div>
-                <div class="event-content">
-                  <h4>Health Inspection</h4>
-                  <p>New births check</p>
-                </div>
-              </div>
-
-              <div class="event-item maintenance">
-                <div class="event-time">04:00 PM</div>
-                <div class="event-content">
-                  <h4>Cage Cleaning</h4>
-                  <p>Section C</p>
-                </div>
-              </div>
+            </div>
+            
+            <div v-else class="empty-state">
+              <i class="pi pi-calendar"></i>
+              <p>No events scheduled for today</p>
+              <button class="primary-button small" @click="addEvent">
+                <i class="pi pi-plus"></i>
+                Add Event
+              </button>
             </div>
           </div>
         </div>
@@ -136,30 +134,47 @@
         <div class="content-card">
           <div class="card-header">
             <h3>Upcoming Events</h3>
-            <button class="card-action-btn">View All</button>
+            <button class="card-action-btn" @click="viewAllEvents">View All</button>
           </div>
-          <div class="upcoming-events">
-            <div class="event-item">
-              <div class="event-marker breeding"></div>
+          
+          <div v-if="isLoadingUpcoming" class="loading-state">
+            <i class="pi pi-spinner pi-spin"></i>
+            <span>Loading upcoming events...</span>
+          </div>
+          
+          <div v-else-if="upcomingError" class="error-state">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>{{ upcomingError }}</span>
+            <button @click="fetchUpcomingEvents" class="retry-btn">
+              <i class="pi pi-refresh"></i>
+              Retry
+            </button>
+          </div>
+          
+          <div v-else-if="upcomingEvents.length > 0" class="upcoming-events">
+            <div v-for="event in upcomingEvents" :key="event.id" class="event-item">
+              <div class="event-marker" :class="event.event_type"></div>
               <div class="event-details">
                 <div class="event-info">
-                  <h4>Expected Birth</h4>
-                  <p>Doe R-005</p>
+                  <h4>{{ event.title }}</h4>
+                  <p v-if="event.rabbit_name">{{ event.rabbit_name }} ({{ event.rabbit_tag }})</p>
+                  <p v-else-if="event.description">{{ event.description }}</p>
                 </div>
-                <span class="event-date">Tomorrow, 9:00 AM</span>
+                <span class="event-date">{{ formatEventDate(event.start_date, event.start_time) }}</span>
+                <span v-if="event.priority === 'high' || event.priority === 'urgent'" class="priority-indicator" :class="event.priority">
+                  {{ event.priority }}
+                </span>
               </div>
             </div>
-
-            <div class="event-item">
-              <div class="event-marker health"></div>
-              <div class="event-details">
-                <div class="event-info">
-                  <h4>Vaccination</h4>
-                  <p>Young rabbits - Section B</p>
-                </div>
-                <span class="event-date">Wed, 2:30 PM</span>
-              </div>
-            </div>
+          </div>
+          
+          <div v-else class="empty-state">
+            <i class="pi pi-calendar-plus"></i>
+            <p>No upcoming events</p>
+            <button class="primary-button small" @click="addEvent">
+              <i class="pi pi-plus"></i>
+              Schedule Event
+            </button>
           </div>
         </div>
       </div>
@@ -168,10 +183,215 @@
 </template>
 
 <script>
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { supabase } from '@/supabase'
+
 export default {
   name: 'AppSchedule',
   setup() {
-    return {}
+    const router = useRouter()
+    
+    // Data state
+    const isLoading = ref(false)
+    const isLoadingUpcoming = ref(false)
+    const error = ref('')
+    const upcomingError = ref('')
+    
+    // Calendar state
+    const currentDate = ref(new Date())
+    const currentView = ref('Day')
+    const selectedDate = ref(new Date())
+    
+    // Events data
+    const todayEvents = ref([])
+    const upcomingEvents = ref([])
+    const eventFilters = reactive({
+      breeding: true,
+      feeding: true,
+      health: true,
+      maintenance: true
+    })
+    
+    // Computed properties
+    const currentMonth = computed(() => {
+      return currentDate.value.toLocaleDateString('en-US', { 
+        month: 'long', 
+        year: 'numeric' 
+      })
+    })
+    
+    const filteredTodayEvents = computed(() => {
+      return todayEvents.value.filter(event => eventFilters[event.event_type])
+    })
+    
+    const todayDateInfo = computed(() => {
+      const today = new Date()
+      return {
+        day: today.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: today.getDate()
+      }
+    })
+    
+    // Methods
+    const addEvent = () => {
+      router.push('/schedule/add')
+    }
+    
+    const viewAllEvents = () => {
+      router.push('/schedule/events')
+    }
+    
+    const changeView = (view) => {
+      currentView.value = view
+      if (view === 'Day') {
+        fetchTodayEvents()
+      }
+    }
+    
+    const navigateMonth = (direction) => {
+      const newDate = new Date(currentDate.value)
+      newDate.setMonth(newDate.getMonth() + direction)
+      currentDate.value = newDate
+    }
+    
+    const goToToday = () => {
+      currentDate.value = new Date()
+      selectedDate.value = new Date()
+      fetchTodayEvents()
+    }
+    
+    // Fetch today's events
+    const fetchTodayEvents = async () => {
+      try {
+        isLoading.value = true
+        error.value = ''
+        
+        const today = new Date().toISOString().split('T')[0]
+        
+        const { data, error: fetchError } = await supabase
+          .from('schedule_events_with_rabbit')
+          .select('*')
+          .eq('start_date', today)
+          .order('start_time', { ascending: true })
+        
+        if (fetchError) throw fetchError
+        
+        todayEvents.value = data || []
+        console.log('Fetched today events:', data?.length || 0)
+        
+      } catch (err) {
+        console.error('Error fetching today events:', err)
+        error.value = 'Failed to load today\'s events'
+        // Fallback to mock data for now
+        todayEvents.value = []
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // Fetch upcoming events
+    const fetchUpcomingEvents = async () => {
+      try {
+        isLoadingUpcoming.value = true
+        upcomingError.value = ''
+        
+        const { data, error: fetchError } = await supabase
+          .rpc('get_upcoming_events', { 
+            days_ahead: 7, 
+            limit_count: 5 
+          })
+        
+        if (fetchError) throw fetchError
+        
+        upcomingEvents.value = data || []
+        console.log('Fetched upcoming events:', data?.length || 0)
+        
+      } catch (err) {
+        console.error('Error fetching upcoming events:', err)
+        upcomingError.value = 'Failed to load upcoming events'
+        // Fallback to mock data for now
+        upcomingEvents.value = []
+      } finally {
+        isLoadingUpcoming.value = false
+      }
+    }
+    
+    // Format time for display
+    const formatTime = (timeString) => {
+      if (!timeString) return ''
+      const time = new Date(`2000-01-01T${timeString}`)
+      return time.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+    
+    // Format event date for upcoming events
+    const formatEventDate = (dateString, timeString) => {
+      const date = new Date(dateString)
+      const today = new Date()
+      const tomorrow = new Date()
+      tomorrow.setDate(today.getDate() + 1)
+      
+      let dateStr
+      if (date.toDateString() === today.toDateString()) {
+        dateStr = 'Today'
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        dateStr = 'Tomorrow'
+      } else {
+        dateStr = date.toLocaleDateString('en-US', { weekday: 'short' })
+      }
+      
+      if (timeString) {
+        dateStr += `, ${formatTime(timeString)}`
+      }
+      
+      return dateStr
+    }
+    
+    // Get event type icon
+    const getEventIcon = (eventType) => {
+      const icons = {
+        breeding: 'pi-heart',
+        feeding: 'pi-apple',
+        health: 'pi-plus-circle',
+        maintenance: 'pi-wrench'
+      }
+      return icons[eventType] || 'pi-calendar'
+    }
+    
+    onMounted(() => {
+      fetchTodayEvents()
+      fetchUpcomingEvents()
+    })
+    
+    return {
+      isLoading,
+      isLoadingUpcoming,
+      error,
+      upcomingError,
+      currentDate,
+      currentView,
+      selectedDate,
+      todayEvents,
+      upcomingEvents,
+      eventFilters,
+      currentMonth,
+      filteredTodayEvents,
+      todayDateInfo,
+      addEvent,
+      viewAllEvents,
+      changeView,
+      navigateMonth,
+      goToToday,
+      fetchTodayEvents,
+      fetchUpcomingEvents,
+      formatTime,
+      formatEventDate,
+      getEventIcon
+    }
   }
 }
 </script>
@@ -490,6 +710,89 @@ export default {
 .event-date {
   font-size: 0.875rem;
   color: #64748b;
+}
+
+/* Loading and Error States */
+.loading-state, .error-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.error-state {
+  color: #dc2626;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+.empty-state p {
+  margin: 0.5rem 0 1rem 0;
+}
+
+.primary-button.small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Priority indicators */
+.priority-badge, .priority-indicator {
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.priority-badge.high, .priority-indicator.high {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.priority-badge.urgent, .priority-indicator.urgent {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.event-status {
+  margin-left: auto;
+}
+
+.priority-indicator {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+
+/* Event marker colors for more types */
+.event-marker.general { background: #6b7280; }
+
+.pi-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 1024px) {

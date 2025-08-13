@@ -1,70 +1,29 @@
 <template>
-  <div class="feeding-schedule-container">
-    <div class="header">
-      <h1>Feeding Schedules</h1>
-      <button @click="openAddModal" class="add-button">
-        <i class="fas fa-plus"></i> Add Schedule
-      </button>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="loading">
-      <i class="fas fa-spinner fa-spin"></i> Loading schedules...
-    </div>
-
-    <!-- Error Message -->
-    <div v-if="error" class="error">
-      {{ error }}
-    </div>
-
-    <!-- Schedules List -->
-    <div v-if="!loading && !error" class="schedules-list">
-      <div v-for="schedule in schedules" :key="schedule.id" class="schedule-card">
-        <div class="schedule-header">
-          <h3>{{ schedule.name }}</h3>
-          <div class="schedule-actions">
-            <button @click="editSchedule(schedule)" class="edit-button">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button @click="confirmDelete(schedule)" class="delete-button">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </div>
-        <p class="description">{{ schedule.description }}</p>
-        <div class="schedule-details">
-          <div class="detail">
-            <i class="fas fa-clock"></i>
-            <span>{{ formatTime(schedule.time) }}</span>
-          </div>
-          <div class="detail">
-            <i class="fas fa-calendar"></i>
-            <span>{{ formatFrequency(schedule.frequency) }}</span>
-          </div>
-          <div class="detail">
-            <i class="fas fa-utensils"></i>
-            <span>{{ formatFeedType(schedule.feed_type) }}</span>
-          </div>
-        </div>
-        <div v-if="schedule.sections" class="sections">
-          <strong>Sections:</strong> {{ schedule.sections }}
-        </div>
-        <div v-if="schedule.notes" class="notes">
-          <strong>Notes:</strong> {{ schedule.notes }}
-        </div>
+  <div class="feeding-schedule-form-page">
+    <div class="page-header">
+      <div>
+        <h1>{{ isEditing ? 'Edit Schedule' : 'Add New Schedule' }}</h1>
+        <p class="subtitle">{{ isEditing ? 'Update feeding schedule information' : 'Create a new feeding schedule for your rabbits' }}</p>
+      </div>
+      <div class="header-actions">
+        <button class="secondary-button" @click="$router.back()">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
+        <button class="primary-button" @click="handleSubmit" :disabled="isSubmitting">
+          <i class="fas fa-save"></i>
+          {{ isSubmitting ? 'Saving...' : (isEditing ? 'Save Changes' : 'Add Schedule') }}
+        </button>
       </div>
     </div>
 
-    <!-- Add/Edit Modal -->
-    <div v-if="showModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>{{ editingSchedule ? 'Edit Schedule' : 'Add Schedule' }}</h2>
-          <button @click="closeModal" class="close-button">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <form @submit.prevent="handleSubmit" class="schedule-form">
+    <div class="content-card">
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <form @submit.prevent="handleSubmit" class="schedule-form">
+        <div class="form-row">
           <div class="form-group">
             <label for="name">Schedule Name</label>
             <input
@@ -75,17 +34,28 @@
               placeholder="e.g., Morning Feed"
             />
           </div>
-
           <div class="form-group">
-            <label for="description">Description</label>
-            <textarea
-              id="description"
-              v-model="form.description"
-              required
-              placeholder="Describe the feeding schedule"
-            ></textarea>
+            <label for="priority">Priority</label>
+            <select id="priority" v-model="form.priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
           </div>
+        </div>
 
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea
+            id="description"
+            v-model="form.description"
+            required
+            placeholder="Describe the feeding schedule"
+          ></textarea>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label for="time">Time</label>
             <input
@@ -95,17 +65,33 @@
               required
             />
           </div>
-
           <div class="form-group">
             <label for="frequency">Frequency</label>
-            <select id="frequency" v-model="form.frequency" required>
+            <select id="frequency" v-model="form.frequency" required @change="onFrequencyChange">
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="biweekly">Bi-weekly</option>
               <option value="monthly">Monthly</option>
             </select>
           </div>
+        </div>
 
+        <!-- Days of Week for Weekly Schedule -->
+        <div v-if="form.frequency === 'weekly'" class="form-group">
+          <label>Days of Week</label>
+          <div class="days-of-week">
+            <label v-for="(day, index) in daysOfWeek" :key="index" class="day-checkbox">
+              <input 
+                type="checkbox" 
+                :value="index + 1"
+                v-model="form.days_of_week"
+              />
+              <span>{{ day }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label for="feed_type">Feed Type</label>
             <select id="feed_type" v-model="form.feed_type" required>
@@ -116,72 +102,108 @@
               <option value="supplements">Supplements</option>
             </select>
           </div>
-
           <div class="form-group">
-            <label for="sections">Sections (Optional)</label>
+            <label for="amount">Amount (Optional)</label>
+            <div class="amount-input">
+              <input
+                id="amount"
+                v-model="form.amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+              <select v-model="form.amount_unit">
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="lbs">lbs</option>
+                <option value="cups">cups</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="start_date">Start Date</label>
             <input
-              id="sections"
-              v-model="form.sections"
-              type="text"
-              placeholder="e.g., Section A, B, C"
+              id="start_date"
+              v-model="form.start_date"
+              type="date"
             />
           </div>
-
           <div class="form-group">
-            <label for="notes">Notes (Optional)</label>
-            <textarea
-              id="notes"
-              v-model="form.notes"
-              placeholder="Additional notes"
-            ></textarea>
+            <label for="end_date">End Date (Optional)</label>
+            <input
+              id="end_date"
+              v-model="form.end_date"
+              type="date"
+            />
           </div>
-
-          <div class="form-actions">
-            <button type="button" @click="closeModal" class="cancel-button">
-              Cancel
-            </button>
-            <button type="submit" class="submit-button" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Saving...' : (editingSchedule ? 'Update' : 'Add') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
-      <div class="modal-content delete-modal" @click.stop>
-        <h2>Confirm Delete</h2>
-        <p>Are you sure you want to delete this feeding schedule?</p>
-        <div class="delete-actions">
-          <button @click="closeDeleteModal" class="cancel-button">
-            Cancel
-          </button>
-          <button @click="deleteSchedule" class="delete-button" :disabled="isDeleting">
-            {{ isDeleting ? 'Deleting...' : 'Delete' }}
-          </button>
         </div>
-      </div>
+
+        <div class="form-group">
+          <label for="sections">Sections (Optional)</label>
+          <input
+            id="sections"
+            v-model="form.sections"
+            type="text"
+            placeholder="e.g., Section A, B, C"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes (Optional)</label>
+          <textarea
+            id="notes"
+            v-model="form.notes"
+            placeholder="Additional notes"
+          ></textarea>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              v-model="form.auto_create_records"
+            />
+            <span>Automatically create feed records when executed</span>
+          </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              v-model="form.is_active"
+            />
+            <span>Active (schedule will be executed)</span>
+          </label>
+        </div>
+      </form>
     </div>
   </div>
 </template>
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
+import { scheduleIntegration } from '@/services/scheduleIntegration'
 
 export default {
   name: 'FeedingScheduleForm',
   setup() {
-    const schedules = ref([])
-    const loading = ref(true)
+    const router = useRouter()
+    const route = useRoute()
+    
+    const loading = ref(false)
     const error = ref(null)
-    const showModal = ref(false)
-    const showDeleteModal = ref(false)
-    const editingSchedule = ref(null)
-    const scheduleToDelete = ref(null)
     const isSubmitting = ref(false)
-    const isDeleting = ref(false)
+    const isEditing = ref(false)
+    const scheduleId = ref(null)
+
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
     const form = reactive({
       name: '',
@@ -190,69 +212,59 @@ export default {
       frequency: 'daily',
       feed_type: 'adult_rabbit_feed',
       sections: '',
-      notes: ''
+      notes: '',
+      amount: null,
+      amount_unit: 'kg',
+      priority: 'medium',
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: '',
+      days_of_week: [],
+      auto_create_records: false,
+      is_active: true
     })
 
-    const fetchSchedules = async () => {
+    const loadSchedule = async () => {
       try {
         loading.value = true
         error.value = null
 
-        const { data: user } = await supabase.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
 
         const { data, error: fetchError } = await supabase
           .from('feeding_schedules')
           .select('*')
+          .eq('id', scheduleId.value)
           .eq('user_id', user.id)
           .eq('is_deleted', false)
-          .order('time', { ascending: true })
+          .single()
 
         if (fetchError) throw fetchError
 
-        schedules.value = data
+        // Populate form with existing data
+        Object.assign(form, {
+          ...data,
+          start_date: data.start_date || new Date().toISOString().split('T')[0],
+          end_date: data.end_date || '',
+          days_of_week: data.days_of_week || [],
+          amount: data.amount || null
+        })
+
       } catch (err) {
         error.value = err.message
+        // If schedule not found, redirect back
+        if (err.message.includes('No rows')) {
+          router.push('/feeding/schedule')
+        }
       } finally {
         loading.value = false
       }
     }
 
-    const resetForm = () => {
-      form.name = ''
-      form.description = ''
-      form.time = ''
-      form.frequency = 'daily'
-      form.feed_type = 'adult_rabbit_feed'
-      form.sections = ''
-      form.notes = ''
-    }
-
-    const openAddModal = () => {
-      editingSchedule.value = null
-      resetForm()
-      showModal.value = true
-    }
-
-    const editSchedule = (schedule) => {
-      editingSchedule.value = schedule
-      Object.assign(form, schedule)
-      showModal.value = true
-    }
-
-    const closeModal = () => {
-      showModal.value = false
-      resetForm()
-    }
-
-    const confirmDelete = (schedule) => {
-      scheduleToDelete.value = schedule
-      showDeleteModal.value = true
-    }
-
-    const closeDeleteModal = () => {
-      showDeleteModal.value = false
-      scheduleToDelete.value = null
+    const onFrequencyChange = () => {
+      if (form.frequency !== 'weekly') {
+        form.days_of_week = []
+      }
     }
 
     const handleSubmit = async () => {
@@ -260,32 +272,48 @@ export default {
         isSubmitting.value = true
         error.value = null
 
-        const { data: user } = await supabase.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
 
         const scheduleData = {
           ...form,
-          user_id: user.id
+          user_id: user.id,
+          amount: form.amount || null,
+          end_date: form.end_date || null,
+          days_of_week: form.frequency === 'weekly' ? form.days_of_week : null
         }
 
-        if (editingSchedule.value) {
+        if (isEditing.value) {
           const { error: updateError } = await supabase
             .from('feeding_schedules')
             .update(scheduleData)
-            .eq('id', editingSchedule.value.id)
+            .eq('id', scheduleId.value)
             .eq('user_id', user.id)
 
           if (updateError) throw updateError
         } else {
-          const { error: insertError } = await supabase
+          const { data, error: insertError } = await supabase
             .from('feeding_schedules')
             .insert([scheduleData])
+            .select()
 
           if (insertError) throw insertError
+          
+          // Create feeding reminder events for new schedules
+          if (data && data.length > 0) {
+            try {
+              const savedSchedule = data[0]
+              await scheduleIntegration.createFeedingReminders(savedSchedule, user.id)
+              console.log('Created feeding reminder events')
+            } catch (scheduleError) {
+              console.error('Failed to create feeding schedule events:', scheduleError)
+              // Don't fail the whole operation if schedule creation fails
+            }
+          }
         }
 
-        await fetchSchedules()
-        closeModal()
+        // Navigate back to list
+        router.push('/feeding/schedule')
       } catch (err) {
         error.value = err.message
       } finally {
@@ -293,247 +321,122 @@ export default {
       }
     }
 
-    const deleteSchedule = async () => {
-      try {
-        isDeleting.value = true
-        error.value = null
-
-        const { data: user } = await supabase.auth.getUser()
-        if (!user) throw new Error('User not authenticated')
-
-        const { error: deleteError } = await supabase
-          .from('feeding_schedules')
-          .update({
-            is_deleted: true,
-            deleted_at: new Date().toISOString(),
-            deleted_by: user.id
-          })
-          .eq('id', scheduleToDelete.value.id)
-          .eq('user_id', user.id)
-
-        if (deleteError) throw deleteError
-
-        await fetchSchedules()
-        closeDeleteModal()
-      } catch (err) {
-        error.value = err.message
-      } finally {
-        isDeleting.value = false
+    onMounted(() => {
+      // Check if we're editing (has ID parameter)
+      if (route.params.id) {
+        isEditing.value = true
+        scheduleId.value = route.params.id
+        loadSchedule()
       }
-    }
-
-    const formatTime = (time) => {
-      return new Date(`2000-01-01T${time}`).toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit'
-      })
-    }
-
-    const formatFrequency = (frequency) => {
-      const frequencies = {
-        daily: 'Daily',
-        weekly: 'Weekly',
-        biweekly: 'Bi-weekly',
-        monthly: 'Monthly'
-      }
-      return frequencies[frequency] || frequency
-    }
-
-    const formatFeedType = (feedType) => {
-      const feedTypes = {
-        adult_rabbit_feed: 'Adult Rabbit Feed',
-        growing_rabbit_feed: 'Growing Rabbit Feed',
-        breeding_rabbit_feed: 'Breeding Rabbit Feed',
-        hay: 'Hay',
-        supplements: 'Supplements'
-      }
-      return feedTypes[feedType] || feedType
-    }
-
-    onMounted(fetchSchedules)
+    })
 
     return {
-      schedules,
       loading,
       error,
-      showModal,
-      showDeleteModal,
-      editingSchedule,
-      form,
       isSubmitting,
-      isDeleting,
-      openAddModal,
-      editSchedule,
-      closeModal,
-      confirmDelete,
-      closeDeleteModal,
-      handleSubmit,
-      deleteSchedule,
-      formatTime,
-      formatFrequency,
-      formatFeedType
+      isEditing,
+      form,
+      daysOfWeek,
+      onFrequencyChange,
+      handleSubmit
     }
   }
 }
 </script>
 
 <style scoped>
-.feeding-schedule-container {
-  max-width: 1200px;
+.feeding-schedule-form-page {
+  max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
 }
 
-.header {
+.page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 2rem;
 }
 
-.add-button {
-  background-color: #4CAF50;
-  color: white;
+.page-header h1 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 2rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.primary-button,
+.secondary-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s;
 }
 
-.add-button:hover {
-  background-color: #45a049;
+.primary-button {
+  background-color: #2196F3;
+  color: white;
 }
 
-.loading {
-  text-align: center;
-  padding: 2rem;
+.primary-button:hover {
+  background-color: #1976D2;
+}
+
+.primary-button:disabled {
+  background-color: #90CAF9;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background-color: #f5f5f5;
   color: #666;
+  border: 1px solid #ddd;
 }
 
-.error {
+.secondary-button:hover {
+  background-color: #e0e0e0;
+}
+
+.content-card {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error-message {
   background-color: #ffebee;
   color: #c62828;
   padding: 1rem;
   border-radius: 4px;
-  margin-bottom: 1rem;
-}
-
-.schedules-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.schedule-card {
-  background-color: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.schedule-header h3 {
-  margin: 0;
-  color: #333;
-}
-
-.schedule-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.edit-button,
-.delete-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  color: #666;
-}
-
-.edit-button:hover {
-  color: #2196F3;
-}
-
-.delete-button:hover {
-  color: #f44336;
-}
-
-.description {
-  color: #666;
-  margin-bottom: 1rem;
-}
-
-.schedule-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.detail {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #666;
-}
-
-.sections,
-.notes {
-  margin-top: 1rem;
-  color: #666;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  border-radius: 8px;
-  padding: 2rem;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #666;
-  font-size: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 .schedule-form {
   display: flex;
   flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
@@ -546,15 +449,25 @@ export default {
 .form-group label {
   font-weight: 500;
   color: #333;
+  font-size: 0.9rem;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
-  padding: 0.5rem;
+  padding: 0.75rem;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
 .form-group textarea {
@@ -562,65 +475,97 @@ export default {
   resize: vertical;
 }
 
-.form-actions {
+.amount-input {
   display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
 }
 
-.cancel-button,
-.submit-button {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+.amount-input input {
+  flex: 1;
+}
+
+.amount-input select {
+  width: 80px;
+}
+
+.days-of-week {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+
+.day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   cursor: pointer;
-  font-weight: 500;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
-.cancel-button {
+.day-checkbox:hover {
   background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  color: #666;
 }
 
-.submit-button {
-  background-color: #2196F3;
-  border: none;
-  color: white;
+.day-checkbox input[type="checkbox"] {
+  width: auto;
+  margin: 0;
 }
 
-.submit-button:hover {
-  background-color: #1976D2;
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
 }
 
-.submit-button:disabled {
-  background-color: #90CAF9;
-  cursor: not-allowed;
-}
-
-.delete-modal {
-  text-align: center;
-}
-
-.delete-actions {
+.checkbox-label {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: normal;
+  margin: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  transform: scale(1.2);
 }
 
 @media (max-width: 768px) {
-  .feeding-schedule-container {
+  .feeding-schedule-form-page {
     padding: 1rem;
   }
 
-  .schedules-list {
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: space-between;
+  }
+
+  .content-card {
+    padding: 1.5rem;
+  }
+
+  .form-row {
     grid-template-columns: 1fr;
   }
 
-  .modal-content {
-    width: 95%;
-    padding: 1.5rem;
+  .days-of-week {
+    gap: 0.5rem;
+  }
+
+  .day-checkbox {
+    padding: 0.25rem;
   }
 }
-</style> 
+</style>

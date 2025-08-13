@@ -10,7 +10,7 @@
           <i class="pi pi-filter"></i>
           Filter
         </button>
-        <button class="primary-button">
+        <button class="primary-button" @click="addHealthRecord">
           <i class="pi pi-plus"></i>
           Add Health Record
         </button>
@@ -23,22 +23,36 @@
         <div class="card-header">
           <h2>Health Overview</h2>
           <div class="header-filters">
-            <select class="form-control">
+            <select class="filter-select" v-model="selectedPeriod" @change="changePeriod(selectedPeriod)">
               <option>Last 30 Days</option>
               <option>Last 3 Months</option>
               <option>Last 6 Months</option>
             </select>
           </div>
         </div>
-        <div class="stats-grid">
+        <div v-if="isLoadingStats" class="loading-state">
+          <i class="pi pi-spinner pi-spin"></i>
+          <span>Loading health statistics...</span>
+        </div>
+        
+        <div v-else-if="statsError" class="error-state">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ statsError }}</span>
+          <button @click="fetchHealthStats" class="retry-btn">
+            <i class="pi pi-refresh"></i>
+            Retry
+          </button>
+        </div>
+        
+        <div v-else class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon healthy">
               <i class="pi pi-check-circle"></i>
             </div>
             <div class="stat-content">
               <h3>Healthy Rabbits</h3>
-              <p class="stat-value">142</p>
-              <p class="stat-change positive">91% of total</p>
+              <p class="stat-value">{{ healthStats.healthyRabbits }}</p>
+              <p class="stat-change positive">{{ healthStats.healthyPercentage }}% of total</p>
             </div>
           </div>
 
@@ -48,8 +62,8 @@
             </div>
             <div class="stat-content">
               <h3>Under Treatment</h3>
-              <p class="stat-value">8</p>
-              <p class="stat-change">5% of total</p>
+              <p class="stat-value">{{ healthStats.underTreatment }}</p>
+              <p class="stat-change">{{ healthStats.treatmentPercentage }}% of total</p>
             </div>
           </div>
 
@@ -59,8 +73,19 @@
             </div>
             <div class="stat-content">
               <h3>Under Observation</h3>
-              <p class="stat-value">6</p>
-              <p class="stat-change">4% of total</p>
+              <p class="stat-value">{{ healthStats.underObservation }}</p>
+              <p class="stat-change">{{ healthStats.observationPercentage }}% of total</p>
+            </div>
+          </div>
+          
+          <div class="stat-card total-rabbits">
+            <div class="stat-icon total">
+              <i class="pi pi-users"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Total Rabbits</h3>
+              <p class="stat-value">{{ healthStats.totalRabbits }}</p>
+              <p class="stat-change">Active in {{ selectedPeriod.toLowerCase() }}</p>
             </div>
           </div>
         </div>
@@ -70,56 +95,62 @@
       <div class="content-card">
         <div class="card-header">
           <h2>Active Treatments</h2>
-          <button class="card-action-btn">View All</button>
+          <button class="card-action-btn" @click="viewAllRecords">View All</button>
         </div>
-        <div class="treatments-list">
-          <div class="treatment-item">
+        <div v-if="isLoadingTreatments" class="loading-state">
+          <i class="pi pi-spinner pi-spin"></i>
+          <span>Loading active treatments...</span>
+        </div>
+        
+        <div v-else-if="treatmentError" class="error-state">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ treatmentError }}</span>
+          <button @click="fetchActiveTreatments" class="retry-btn">
+            <i class="pi pi-refresh"></i>
+            Retry
+          </button>
+        </div>
+        
+        <div v-else-if="activeTreatments.length > 0" class="treatments-list">
+          <div v-for="treatment in activeTreatments.slice(0, 3)" :key="treatment.id" class="treatment-item">
             <div class="treatment-header">
               <div class="rabbit-info">
-                <h4>R-001</h4>
-                <span class="breed">New Zealand White</span>
+                <h4>{{ treatment.rabbit_tag || treatment.rabbit_id }}</h4>
+                <span class="breed">{{ treatment.breed }}</span>
               </div>
-              <span class="status treatment">Under Treatment</span>
+              <span class="status" :class="getTreatmentStatus(treatment).class">
+                {{ getTreatmentStatus(treatment).text }}
+              </span>
             </div>
             <div class="treatment-details">
               <div class="condition">
                 <label>Condition:</label>
-                <span>Respiratory Infection</span>
+                <span>{{ treatment.condition || treatment.record_type || 'Not specified' }}</span>
               </div>
               <div class="medication">
-                <label>Medication:</label>
-                <span>Antibiotics - Enrofloxacin</span>
+                <label>{{ treatment.status === 'under_treatment' ? 'Medication:' : 'Action:' }}</label>
+                <span>{{ treatment.medication || treatment.treatment_type || 'Monitoring' }}</span>
               </div>
               <div class="duration">
-                <label>Duration:</label>
-                <span>5 days remaining</span>
+                <label>{{ treatment.status === 'under_treatment' ? 'Duration:' : 'Since:' }}</label>
+                <span v-if="treatment.status === 'under_treatment' && getDaysRemaining(treatment) !== null">
+                  {{ getDaysRemaining(treatment) > 0 ? `${getDaysRemaining(treatment)} days remaining` : 'Treatment completed' }}
+                </span>
+                <span v-else>
+                  {{ getDaysSince(treatment.record_date) === 0 ? 'Today' : `${getDaysSince(treatment.record_date)} days ago` }}
+                </span>
               </div>
             </div>
           </div>
-
-          <div class="treatment-item">
-            <div class="treatment-header">
-              <div class="rabbit-info">
-                <h4>R-015</h4>
-                <span class="breed">California White</span>
-              </div>
-              <span class="status observation">Under Observation</span>
-            </div>
-            <div class="treatment-details">
-              <div class="condition">
-                <label>Condition:</label>
-                <span>Loss of Appetite</span>
-              </div>
-              <div class="medication">
-                <label>Action:</label>
-                <span>Monitoring food intake</span>
-              </div>
-              <div class="duration">
-                <label>Since:</label>
-                <span>2 days ago</span>
-              </div>
-            </div>
-          </div>
+        </div>
+        
+        <div v-else class="empty-state">
+          <i class="pi pi-heart"></i>
+          <p>No active treatments</p>
+          <button class="primary-button small" @click="addHealthRecord">
+            <i class="pi pi-plus"></i>
+            Add Health Record
+          </button>
         </div>
       </div>
 
@@ -127,66 +158,402 @@
       <div class="content-card">
         <div class="card-header">
           <h2>Recent Health Records</h2>
+          <button class="card-action-btn" @click="viewAllRecords">View All</button>
         </div>
-        <div class="table-container">
+        <div v-if="isLoading" class="loading-state">
+          <i class="pi pi-spinner pi-spin"></i>
+          <span>Loading recent health records...</span>
+        </div>
+        
+        <div v-else-if="error" class="error-state">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ error }}</span>
+          <button @click="fetchRecentHealthRecords" class="retry-btn">
+            <i class="pi pi-refresh"></i>
+            Retry
+          </button>
+        </div>
+        
+        <div v-else-if="recentHealthRecords.length > 0" class="table-container">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Rabbit ID</th>
                 <th>Condition</th>
                 <th>Treatment</th>
-                <th>Start Date</th>
+                <th>Date</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>R-001</td>
-                <td>Respiratory Infection</td>
-                <td>Antibiotics</td>
-                <td>2024-02-15</td>
-                <td><span class="status-badge treatment">Active</span></td>
+              <tr v-for="record in recentHealthRecords" :key="record.id">
                 <td>
-                  <button class="icon-button"><i class="pi pi-eye"></i></button>
-                  <button class="icon-button"><i class="pi pi-pencil"></i></button>
+                  <strong>{{ record.rabbit_tag || record.rabbit_id }}</strong>
+                  <div class="rabbit-breed">{{ record.breed }}</div>
                 </td>
-              </tr>
-              <tr>
-                <td>R-015</td>
-                <td>Loss of Appetite</td>
-                <td>Monitoring</td>
-                <td>2024-02-17</td>
-                <td><span class="status-badge observation">Monitoring</span></td>
                 <td>
-                  <button class="icon-button"><i class="pi pi-eye"></i></button>
-                  <button class="icon-button"><i class="pi pi-pencil"></i></button>
+                  <div class="condition-cell">
+                    <span v-if="record.condition" class="condition-text">{{ record.condition }}</span>
+                    <span v-else class="no-condition">{{ record.record_type || 'Checkup' }}</span>
+                    <span v-if="record.severity" class="severity-indicator" :class="record.severity">
+                      {{ record.severity }}
+                    </span>
+                  </div>
                 </td>
-              </tr>
-              <tr>
-                <td>R-008</td>
-                <td>Ear Mites</td>
-                <td>Ivermectin</td>
-                <td>2024-02-10</td>
-                <td><span class="status-badge completed">Completed</span></td>
                 <td>
-                  <button class="icon-button"><i class="pi pi-eye"></i></button>
-                  <button class="icon-button"><i class="pi pi-pencil"></i></button>
+                  <span v-if="record.medication" class="treatment-text">{{ record.medication }}</span>
+                  <span v-else-if="record.treatment_type" class="treatment-text">{{ record.treatment_type }}</span>
+                  <span v-else class="no-treatment">-</span>
+                </td>
+                <td>{{ formatDate(record.record_date) }}</td>
+                <td>
+                  <span class="status-badge" :class="getStatusClass(record.status)">
+                    {{ formatStatus(record.status) }}
+                  </span>
+                </td>
+                <td>
+                  <button class="icon-button" @click="viewRecord(record)" title="View Details">
+                    <i class="pi pi-eye"></i>
+                  </button>
+                  <button class="icon-button" @click="editRecord(record)" title="Edit Record">
+                    <i class="pi pi-pencil"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        
+        <div v-else class="empty-state">
+          <i class="pi pi-heart"></i>
+          <p>No health records found</p>
+          <button class="primary-button small" @click="addHealthRecord">
+            <i class="pi pi-plus"></i>
+            Add First Health Record
+          </button>
+        </div>
       </div>
+
+      <!-- Upcoming Health Events -->
+      <UpcomingEventsWidget :limit="5" :event-types="['health']" />
     </div>
   </div>
 </template>
 
 <script>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { supabase } from '@/supabase'
+import UpcomingEventsWidget from '@/components/UpcomingEventsWidget.vue'
+
 export default {
   name: 'HealthDataManagement',
+  components: {
+    UpcomingEventsWidget
+  },
   setup() {
-    return {}
+    const router = useRouter()
+    
+    // Data state
+    const isLoading = ref(false)
+    const isLoadingTreatments = ref(false)
+    const isLoadingStats = ref(false)
+    const error = ref('')
+    const treatmentError = ref('')
+    const statsError = ref('')
+    const recentHealthRecords = ref([])
+    const activeTreatments = ref([])
+    const healthStats = ref({
+      totalRabbits: 0,
+      healthyRabbits: 0,
+      underTreatment: 0,
+      underObservation: 0,
+      healthyPercentage: 0,
+      treatmentPercentage: 0,
+      observationPercentage: 0
+    })
+    const selectedPeriod = ref('Last 30 Days')
+    
+    const addHealthRecord = () => {
+      router.push('/health-data/add')
+    }
+
+    const viewAllRecords = () => {
+      router.push('/health-data/records')
+    }
+    
+    // Fetch recent health records
+    const fetchRecentHealthRecords = async () => {
+      try {
+        isLoading.value = true
+        error.value = ''
+        
+        const { data, error: fetchError } = await supabase
+          .from('health_records_with_rabbit')
+          .select('*')
+          .order('record_date', { ascending: false })
+          .limit(5)
+        
+        if (fetchError) throw fetchError
+        
+        recentHealthRecords.value = data || []
+        console.log('Fetched recent health records:', data?.length || 0)
+        
+      } catch (err) {
+        console.error('Error fetching recent health records:', err)
+        error.value = 'Failed to load recent health records'
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // Fetch active treatments
+    const fetchActiveTreatments = async () => {
+      try {
+        isLoadingTreatments.value = true
+        treatmentError.value = ''
+        
+        const { data, error: fetchError } = await supabase
+          .from('health_records_with_rabbit')
+          .select('*')
+          .in('status', ['under_treatment', 'under_observation'])
+          .not('treatment_type', 'is', null)
+          .or('medication.not.is.null,treatment_type.not.is.null')
+          .order('record_date', { ascending: false })
+          .limit(10)
+        
+        if (fetchError) throw fetchError
+        
+        activeTreatments.value = data || []
+        console.log('Fetched active treatments:', data?.length || 0)
+        
+      } catch (err) {
+        console.error('Error fetching active treatments:', err)
+        treatmentError.value = 'Failed to load active treatments'
+      } finally {
+        isLoadingTreatments.value = false
+      }
+    }
+    
+    // Fetch health statistics
+    const fetchHealthStats = async () => {
+      try {
+        isLoadingStats.value = true
+        statsError.value = ''
+        
+        // Start with a simple approach - just get rabbits count
+        console.log('Fetching health statistics...')
+        
+        // Get all rabbits (simplified query)
+        const { data: rabbits, error: rabbitsError } = await supabase
+          .from('rabbits')
+          .select('id, rabbit_id, name')
+        
+        if (rabbitsError) {
+          console.error('Rabbits query error:', rabbitsError)
+          throw new Error(`Failed to fetch rabbits: ${rabbitsError.message}`)
+        }
+        
+        console.log('Fetched rabbits:', rabbits?.length || 0)
+        const totalRabbits = rabbits?.length || 0
+        
+        // Try to get health records without date filtering first
+        let healthRecords = []
+        let recordsError = null
+        
+        try {
+          console.log('Attempting to fetch health records...')
+          const { data, error } = await supabase
+            .from('health_records')
+            .select('rabbit_id, status, record_date')
+            .order('record_date', { ascending: false })
+            .limit(100) // Limit to avoid large queries
+          
+          healthRecords = data || []
+          recordsError = error
+          
+          if (recordsError) {
+            console.error('Health records error:', recordsError)
+          } else {
+            console.log('Fetched health records:', healthRecords.length)
+          }
+        } catch (err) {
+          console.log('Health records table might not exist yet')
+          recordsError = err
+        }
+        
+        // Calculate statistics
+        let healthyCount = totalRabbits // Default all to healthy
+        let treatmentCount = 0
+        let observationCount = 0
+        
+        if (!recordsError && healthRecords.length > 0) {
+          // Get the most recent record for each rabbit
+          const rabbitStatusMap = new Map()
+          healthRecords.forEach(record => {
+            if (!rabbitStatusMap.has(record.rabbit_id)) {
+              rabbitStatusMap.set(record.rabbit_id, record.status)
+            }
+          })
+          
+          // Reset counts and recalculate
+          healthyCount = 0
+          treatmentCount = 0
+          observationCount = 0
+          
+          rabbits?.forEach(rabbit => {
+            const status = rabbitStatusMap.get(rabbit.id)
+            if (status === 'under_treatment') {
+              treatmentCount++
+            } else if (status === 'under_observation') {
+              observationCount++
+            } else {
+              healthyCount++
+            }
+          })
+        }
+        
+        // Calculate percentages
+        const healthyPercentage = totalRabbits > 0 ? Math.round((healthyCount / totalRabbits) * 100) : 0
+        const treatmentPercentage = totalRabbits > 0 ? Math.round((treatmentCount / totalRabbits) * 100) : 0
+        const observationPercentage = totalRabbits > 0 ? Math.round((observationCount / totalRabbits) * 100) : 0
+        
+        healthStats.value = {
+          totalRabbits,
+          healthyRabbits: healthyCount,
+          underTreatment: treatmentCount,
+          underObservation: observationCount,
+          healthyPercentage,
+          treatmentPercentage,
+          observationPercentage
+        }
+        
+        console.log('Health stats calculated:', healthStats.value)
+        
+      } catch (err) {
+        console.error('Error fetching health stats:', err)
+        statsError.value = `Failed to load health statistics: ${err.message || 'Unknown error'}`
+      } finally {
+        isLoadingStats.value = false
+      }
+    }
+    
+    // Handle period filter change
+    const changePeriod = (newPeriod) => {
+      selectedPeriod.value = newPeriod
+      fetchHealthStats()
+    }
+    
+    // Helper functions
+    const formatDate = (dateString) => {
+      const date = new Date(dateString)
+      return date.toLocaleDateString()
+    }
+    
+    const formatStatus = (status) => {
+      const statusMap = {
+        healthy: 'Healthy',
+        under_treatment: 'Active',
+        under_observation: 'Monitoring',
+        recovered: 'Completed',
+        chronic: 'Chronic'
+      }
+      return statusMap[status] || status
+    }
+    
+    const getStatusClass = (status) => {
+      const classMap = {
+        healthy: 'completed',
+        under_treatment: 'treatment',
+        under_observation: 'observation',
+        recovered: 'completed',
+        chronic: 'chronic'
+      }
+      return classMap[status] || 'treatment'
+    }
+    
+    const viewRecord = () => {
+      router.push({ 
+        name: 'HealthRecordsList'
+      })
+    }
+    
+    const editRecord = (record) => {
+      router.push({ 
+        name: 'EditHealthRecord', 
+        params: { id: record.id },
+        query: { returnTo: 'dashboard' }
+      })
+    }
+    
+    // Treatment-specific helper functions
+    const getDaysRemaining = (treatment) => {
+      if (!treatment.treatment_start_date || !treatment.treatment_duration) {
+        return null
+      }
+      
+      const startDate = new Date(treatment.treatment_start_date)
+      const endDate = new Date(startDate)
+      endDate.setDate(startDate.getDate() + treatment.treatment_duration)
+      
+      const today = new Date()
+      const timeDiff = endDate - today
+      const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24))
+      
+      return daysDiff > 0 ? daysDiff : 0
+    }
+    
+    const getDaysSince = (dateString) => {
+      const date = new Date(dateString)
+      const today = new Date()
+      const timeDiff = today - date
+      const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+      
+      return daysDiff
+    }
+    
+    const getTreatmentStatus = (treatment) => {
+      if (treatment.status === 'under_treatment') {
+        return { text: 'Under Treatment', class: 'treatment' }
+      } else if (treatment.status === 'under_observation') {
+        return { text: 'Under Observation', class: 'observation' }
+      }
+      return { text: 'Active', class: 'treatment' }
+    }
+    
+    onMounted(() => {
+      fetchRecentHealthRecords()
+      fetchActiveTreatments()
+      fetchHealthStats()
+    })
+
+    return {
+      isLoading,
+      isLoadingTreatments,
+      isLoadingStats,
+      error,
+      treatmentError,
+      statsError,
+      recentHealthRecords,
+      activeTreatments,
+      healthStats,
+      selectedPeriod,
+      addHealthRecord,
+      viewAllRecords,
+      fetchRecentHealthRecords,
+      fetchActiveTreatments,
+      fetchHealthStats,
+      changePeriod,
+      formatDate,
+      formatStatus,
+      getStatusClass,
+      viewRecord,
+      editRecord,
+      getDaysRemaining,
+      getDaysSince,
+      getTreatmentStatus
+    }
   }
 }
 </script>
@@ -272,6 +639,52 @@ export default {
   color: #1e293b;
 }
 
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.card-action-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.header-filters {
+  display: flex;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select:hover {
+  border-color: #9ca3af;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -309,6 +722,15 @@ export default {
 .stat-icon.observation {
   background: #fef3c7;
   color: #f59e0b;
+}
+
+.stat-icon.total {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.stat-card.total-rabbits {
+  order: -1; /* Place first in grid */
 }
 
 .stat-content h3 {
@@ -449,6 +871,126 @@ export default {
 
 .icon-button:hover {
   color: #3b82f6;
+}
+
+/* Loading and Error States */
+.loading-state, .error-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.error-state {
+  color: #dc2626;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+.empty-state p {
+  margin: 0.5rem 0 1rem 0;
+}
+
+.primary-button.small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Enhanced Table Styles */
+.rabbit-breed {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.condition-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.condition-text {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.no-condition {
+  font-style: italic;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.severity-indicator {
+  padding: 0.125rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.severity-indicator.mild {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.severity-indicator.moderate {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.severity-indicator.severe {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.severity-indicator.critical {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.treatment-text {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.no-treatment {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Status Badge Updates */
+.status-badge.chronic {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.pi-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {

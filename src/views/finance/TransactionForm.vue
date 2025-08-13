@@ -47,7 +47,7 @@
           <div class="form-group">
             <label for="amount">Amount</label>
             <div class="input-with-icon">
-              <span class="input-icon">$</span>
+              <span class="input-icon">{{ currencySymbol }}</span>
               <input 
                 type="number" 
                 id="amount" 
@@ -144,9 +144,10 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import currencyService from '@/services/currency'
 
 export default {
   name: 'TransactionForm',
@@ -154,6 +155,7 @@ export default {
     const router = useRouter()
     const isSubmitting = ref(false)
     const errorMessage = ref('')
+    const currencySymbol = ref('$')
 
     const form = reactive({
       type: 'revenue',
@@ -207,10 +209,17 @@ export default {
       }
     }
 
+    onMounted(async () => {
+      // Initialize currency service
+      await currencyService.initialize()
+      currencySymbol.value = currencyService.getSymbol()
+    })
+
     return {
       form,
       isSubmitting,
       errorMessage,
+      currencySymbol,
       handleSubmit
     }
   }

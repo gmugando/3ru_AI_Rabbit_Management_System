@@ -93,6 +93,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
 import { generateId } from '@/utils/idGenerator'
+import { scheduleIntegration } from '@/services/scheduleIntegration'
 
 const route = useRoute()
 const router = useRouter()
@@ -199,11 +200,39 @@ async function handleSubmit() {
       // For new plans, generate a unique plan_id
       planData.plan_id = generateId('BP')
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('breeding_plans')
         .insert([planData])
+        .select()
 
       if (error) throw error
+      
+      // Create breeding milestone events for new plans
+      if (data && data.length > 0) {
+        try {
+          const savedPlan = data[0]
+          
+          // Get rabbit names for event creation
+          const buckRabbit = maleRabbits.value.find(r => r.id === savedPlan.buck_id)
+          const doeRabbit = femaleRabbits.value.find(r => r.id === savedPlan.doe_id)
+          
+          const planWithNames = {
+            ...savedPlan,
+            buck_name: buckRabbit?.name || 'Unknown Buck',
+            doe_name: doeRabbit?.name || 'Unknown Doe'
+          }
+          
+          // Get current user
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await scheduleIntegration.createBreedingMilestones(planWithNames, user.id)
+            console.log('Created breeding milestone events')
+          }
+        } catch (scheduleError) {
+          console.error('Failed to create breeding schedule events:', scheduleError)
+          // Don't fail the whole operation if schedule creation fails
+        }
+      }
     }
 
     router.push('/breeding')

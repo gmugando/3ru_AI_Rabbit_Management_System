@@ -103,6 +103,15 @@
           </div>
 
           <div class="form-group">
+            <label>Currency</label>
+            <select v-model="preferences.currency" class="form-control">
+              <option value="USD">US Dollar ($)</option>
+              <option value="ZAR">South African Rand (R)</option>
+              <option value="GBP">British Pound (£)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label>Items Per Page</label>
             <select v-model="preferences.items_per_page" class="form-control">
               <option :value="10">10 items</option>
@@ -307,7 +316,7 @@ export default {
       date_format: 'MM/dd/yyyy',
       time_format: '12h',
       timezone: 'America/Denver',
-      currency: 'USD',
+      currency: 'ZAR',
       language: 'en',
       email_notifications: true,
       breeding_alerts: true,

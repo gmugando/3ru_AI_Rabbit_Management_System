@@ -6,9 +6,9 @@
         <p class="subtitle">Welcome back, {{ userName }}!</p>
       </div>
       <div class="header-actions">
-        <button class="refresh-button">
-          <i class="pi pi-refresh"></i>
-          Refresh
+        <button class="refresh-button" @click="fetchDashboardData" :disabled="loading">
+          <i class="pi" :class="loading ? 'pi-spin pi-spinner' : 'pi-refresh'"></i>
+          {{ loading ? 'Refreshing...' : 'Refresh' }}
         </button>
       </div>
     </div>
@@ -20,13 +20,13 @@
         </div>
         <div class="stat-content">
           <h3>Total Rabbits</h3>
-          <p class="stat-value">156</p>
+          <p class="stat-value">{{ loading ? '...' : dashboardStats.totalRabbits }}</p>
           <div class="stat-footer">
             <span class="stat-change positive">
               <i class="pi pi-arrow-up"></i>
-              12%
+              {{ dashboardStats.activeRabbits }}
             </span>
-            <span class="stat-period">vs last month</span>
+            <span class="stat-period">active</span>
           </div>
         </div>
       </div>
@@ -37,13 +37,13 @@
         </div>
         <div class="stat-content">
           <h3>Breeding Pairs</h3>
-          <p class="stat-value">24</p>
+          <p class="stat-value">{{ loading ? '...' : dashboardStats.breedingPairs }}</p>
           <div class="stat-footer">
             <span class="stat-change positive">
               <i class="pi pi-arrow-up"></i>
-              8%
+              Active
             </span>
-            <span class="stat-period">vs last month</span>
+            <span class="stat-period">pairs</span>
           </div>
         </div>
       </div>
@@ -54,9 +54,9 @@
         </div>
         <div class="stat-content">
           <h3>Expected Births</h3>
-          <p class="stat-value">18</p>
+          <p class="stat-value">{{ loading ? '...' : dashboardStats.expectedBirths }}</p>
           <div class="stat-footer">
-            <span class="stat-period">Next 30 days</span>
+            <span class="stat-period">This month</span>
           </div>
         </div>
       </div>
@@ -67,13 +67,13 @@
         </div>
         <div class="stat-content">
           <h3>Monthly Revenue</h3>
-          <p class="stat-value">$2,450</p>
+          <p class="stat-value">{{ loading ? '...' : formatCurrency(dashboardStats.monthlyRevenue) }}</p>
           <div class="stat-footer">
             <span class="stat-change positive">
               <i class="pi pi-arrow-up"></i>
-              15%
+              {{ formatCurrency(dashboardStats.monthlyExpenses) }}
             </span>
-            <span class="stat-period">vs last month</span>
+            <span class="stat-period">expenses</span>
           </div>
         </div>
       </div>
@@ -108,91 +108,106 @@
           <button class="card-action-btn">View All</button>
         </div>
         <div class="activity-list">
-          <div class="activity-item">
-            <div class="activity-icon success">
-              <i class="pi pi-check-circle"></i>
+          <div v-if="loading" class="activity-item">
+            <div class="activity-icon info">
+              <i class="pi pi-spin pi-spinner"></i>
             </div>
             <div class="activity-content">
-              <p>New rabbit added to cage #A123</p>
-              <span class="activity-time">2 hours ago</span>
+              <p>Loading activities...</p>
             </div>
           </div>
-          <div class="activity-item">
-            <div class="activity-icon primary">
-              <i class="pi pi-heart-fill"></i>
+          <div v-else-if="recentActivities.length === 0" class="activity-item">
+            <div class="activity-icon info">
+              <i class="pi pi-info-circle"></i>
             </div>
             <div class="activity-content">
-              <p>Successful breeding pair #BP45</p>
-              <span class="activity-time">5 hours ago</span>
+              <p>No recent activities</p>
             </div>
           </div>
-          <div class="activity-item">
-            <div class="activity-icon warning">
-              <i class="pi pi-calendar"></i>
+          <div v-else v-for="activity in recentActivities" :key="activity.id" class="activity-item">
+            <div class="activity-icon" :class="activity.type === 'breeding' ? 'primary' : 'success'">
+              <i :class="activity.type === 'breeding' ? 'pi pi-heart-fill' : 'pi pi-check-circle'"></i>
             </div>
             <div class="activity-content">
-              <p>Vaccination scheduled for 12 rabbits</p>
-              <span class="activity-time">1 day ago</span>
+              <p>{{ activity.message }}</p>
+              <span class="activity-time">{{ formatTimeAgo(activity.time) }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="dashboard-card">
-        <div class="card-header">
-          <h2>Upcoming Tasks</h2>
-          <button class="card-action-btn">View All</button>
-        </div>
-        <div class="task-list">
-          <div class="task-item">
-            <label class="task-checkbox">
-              <input type="checkbox">
-              <span class="checkmark"></span>
-            </label>
-            <div class="task-content">
-              <p>Vaccinate new rabbits</p>
-              <span class="task-due warning">Due tomorrow</span>
-            </div>
-          </div>
-          <div class="task-item">
-            <label class="task-checkbox">
-              <input type="checkbox">
-              <span class="checkmark"></span>
-            </label>
-            <div class="task-content">
-              <p>Clean cages in Section B</p>
-              <span class="task-due">Due in 2 days</span>
-            </div>
-          </div>
-          <div class="task-item">
-            <label class="task-checkbox">
-              <input type="checkbox">
-              <span class="checkmark"></span>
-            </label>
-            <div class="task-content">
-              <p>Restock feed supplies</p>
-              <span class="task-due">Due in 3 days</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <UpcomingEventsWidget :limit="6" />
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import Chart from 'chart.js/auto'
+import dashboardService from '@/services/dashboard'
+import currencyService from '@/services/currency'
+import UpcomingEventsWidget from '@/components/UpcomingEventsWidget.vue'
 
 export default {
   name: 'AppDashboard',
+  components: {
+    UpcomingEventsWidget
+  },
   setup() {
     const store = useStore()
-    const userName = computed(() => store.state.user?.name || 'User')
+    const userName = ref('User')
+    
+    const fetchUserProfile = async () => {
+      try {
+        const storeUser = store.state.user
+        console.log('Dashboard user data from store:', storeUser)
+        
+        if (storeUser?.name) {
+          userName.value = storeUser.name
+          return
+        }
+        
+        // Fetch from Supabase auth user metadata
+        const { data: { user } } = await dashboardService.supabase.auth.getUser()
+        console.log('User data from auth:', user)
+        
+        if (user) {
+          // If stored separately
+          if (user.user_metadata.first_name && user.user_metadata.last_name) {
+            userName.value = `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+          }
+          // If stored as full_name
+          else if (user.user_metadata.full_name) {
+            userName.value = user.user_metadata.full_name
+          }
+          // fallback to email
+          else {
+            userName.value = user.email
+          }
+          console.log('Set userName to:', userName.value)
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
+      }
+    }
     
     const populationChart = ref(null)
     const revenueChart = ref(null)
+    
+    // Dashboard stats
+    const dashboardStats = ref({
+      totalRabbits: 0,
+      breedingPairs: 0,
+      expectedBirths: 0,
+      monthlyRevenue: 0,
+      activeRabbits: 0,
+      monthlyExpenses: 0
+    })
+    
+    const recentActivities = ref([])
+    const upcomingTasks = ref([])
+    const loading = ref(true)
 
     const populationData = {
       labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -240,7 +255,77 @@ export default {
       }
     }
 
-    onMounted(() => {
+    const fetchDashboardData = async () => {
+      try {
+        loading.value = true
+        console.log('Starting to fetch dashboard data...')
+        
+        // Fetch dashboard stats
+        const stats = await dashboardService.getDashboardStats()
+        console.log('Dashboard stats received:', stats)
+        dashboardStats.value = stats
+        
+        // Fetch recent activities
+        const activities = await dashboardService.getRecentActivities()
+        console.log('Recent activities received:', activities)
+        recentActivities.value = activities
+        
+        // Fetch upcoming tasks
+        const tasks = await dashboardService.getUpcomingTasks()
+        console.log('Upcoming tasks received:', tasks)
+        upcomingTasks.value = tasks
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        loading.value = false
+        console.log('Dashboard data fetch completed')
+      }
+    }
+
+    const formatCurrency = (amount) => {
+      return currencyService.format(amount)
+    }
+
+    const formatTimeAgo = (dateString) => {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
+      
+      if (diffInHours < 1) return 'Just now'
+      if (diffInHours < 24) return `${diffInHours} hours ago`
+      
+      const diffInDays = Math.floor(diffInHours / 24)
+      if (diffInDays < 7) return `${diffInDays} days ago`
+      
+      const diffInWeeks = Math.floor(diffInDays / 7)
+      return `${diffInWeeks} weeks ago`
+    }
+
+    const formatDueDate = (dateString) => {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffInDays = Math.floor((date - now) / (1000 * 60 * 60 * 24))
+      
+      if (diffInDays < 0) return 'Overdue'
+      if (diffInDays === 0) return 'Due today'
+      if (diffInDays === 1) return 'Due tomorrow'
+      if (diffInDays < 7) return `Due in ${diffInDays} days`
+      
+      const diffInWeeks = Math.floor(diffInDays / 7)
+      return `Due in ${diffInWeeks} weeks`
+    }
+
+    onMounted(async () => {
+      // Initialize currency service
+      await currencyService.initialize()
+      
+      // Fetch user profile first
+      await fetchUserProfile()
+      
+      // Fetch dashboard data
+      await fetchDashboardData()
+      
       // Create Population Chart
       if (populationChart.value) {
         new Chart(populationChart.value, {
@@ -263,7 +348,15 @@ export default {
     return {
       userName,
       populationChart,
-      revenueChart
+      revenueChart,
+      dashboardStats,
+      recentActivities,
+      upcomingTasks,
+      loading,
+      formatCurrency,
+      formatTimeAgo,
+      formatDueDate,
+      fetchDashboardData
     }
   }
 }
@@ -301,6 +394,13 @@ export default {
 .refresh-button:hover {
   background: #f8fafc;
 }
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.activity-icon.info { background: #f0f9ff; color: #0ea5e9; }
 
 .stats-grid {
   display: grid;

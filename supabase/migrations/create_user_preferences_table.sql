@@ -16,7 +16,7 @@ create table if not exists public.user_preferences (
     
     -- Regional Settings
     timezone text default 'America/Denver',
-    currency text default 'USD',
+    currency text default 'ZAR',
     language text default 'en',
     
     -- Notification Preferences
