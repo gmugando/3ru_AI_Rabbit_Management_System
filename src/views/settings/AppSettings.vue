@@ -6,9 +6,9 @@
         <p class="subtitle">Manage your account and system preferences</p>
       </div>
       <div class="header-actions">
-        <button class="primary-button">
+        <button class="primary-button" @click="saveAllChanges" :disabled="loading">
           <i class="pi pi-save"></i>
-          Save Changes
+          {{ loading ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </div>
@@ -20,32 +20,32 @@
           <div class="nav-section">
             <h3>User Settings</h3>
             <div class="nav-items">
-              <button class="nav-item active">
+              <a href="#profile" class="nav-item active">
                 <i class="pi pi-user"></i>
                 Profile
-              </button>
-              <button class="nav-item">
+              </a>
+              <a href="#security" class="nav-item">
                 <i class="pi pi-lock"></i>
                 Security
-              </button>
-              <button class="nav-item">
+              </a>
+              <a href="#notifications" class="nav-item">
                 <i class="pi pi-bell"></i>
                 Notifications
-              </button>
+              </a>
             </div>
           </div>
 
           <div class="nav-section">
             <h3>System Settings</h3>
             <div class="nav-items">
-              <button class="nav-item">
+              <!--<button class="nav-item">
                 <i class="pi pi-tag"></i>
                 Labels & Tags
               </button>
               <button class="nav-item">
                 <i class="pi pi-calendar"></i>
                 Schedule
-              </button>
+              </button>-->
               <router-link to="/preferences" class="nav-item">
                 <i class="pi pi-cog"></i>
                 Preferences
@@ -58,15 +58,25 @@
       <!-- Settings Content -->
       <div class="settings-content">
         <!-- Profile Settings -->
-        <div class="content-card">
+        <div id="profile" class="content-card">
           <div class="card-header">
             <h2>Profile Settings</h2>
           </div>
           
-          <div class="profile-section">
+          <div v-if="loading" class="loading-section">
+            <div class="loading-spinner"></div>
+            <p>Loading profile data...</p>
+          </div>
+
+          <div v-else-if="error" class="error-section">
+            <p class="error-message">{{ error }}</p>
+            <button class="secondary-button" @click="loadUserProfile">Retry</button>
+          </div>
+
+          <div v-else class="profile-section">
             <div class="avatar-section">
               <div class="avatar">
-                <img src="https://via.placeholder.com/100" alt="Profile">
+                <img :src="userProfile.avatarUrl || `https://api.dicebear.com/7.x/personas/svg?seed=${userProfile.firstName}&backgroundColor=ffffff&scale=80&mood=happy`" alt="Profile">
                 <button class="avatar-upload">
                   <i class="pi pi-camera"></i>
                 </button>
@@ -77,39 +87,69 @@
             <div class="form-section">
               <div class="form-group">
                 <label>Full Name</label>
-                <input type="text" placeholder="Grant Mugando" class="form-control">
+                <input 
+                  type="text" 
+                  v-model="userProfile.firstName" 
+                  placeholder="First Name" 
+                  class="form-control"
+                >
+              </div>
+
+              <div class="form-group">
+                <label>Last Name</label>
+                <input 
+                  type="text" 
+                  v-model="userProfile.lastName" 
+                  placeholder="Last Name" 
+                  class="form-control"
+                >
               </div>
 
               <div class="form-group">
                 <label>Email</label>
-                <input type="email" placeholder="grant@example.com" class="form-control">
+                <input 
+                  type="email" 
+                  :value="userProfile.email" 
+                  class="form-control" 
+                  disabled
+                >
               </div>
 
               <div class="form-group">
                 <label>Role</label>
-                <input type="text" value="Farm Manager" class="form-control" disabled>
+                <input 
+                  type="text" 
+                  :value="userProfile.role" 
+                  class="form-control" 
+                  disabled
+                >
               </div>
 
               <div class="form-group">
                 <label>Phone</label>
-                <input type="tel" placeholder="+27 74 079 8159" class="form-control">
+                <input 
+                  type="tel" 
+                  v-model="userProfile.phone" 
+                  placeholder="+27 74 079 8159" 
+                  class="form-control"
+                >
               </div>
 
               <div class="form-group">
-                <label>Time Zone</label>
-                <select class="form-control">
-                  <option>UTC-5 (Eastern Time)</option>
-                  <option>UTC-6 (Central Time)</option>
-                  <option>UTC-7 (Mountain Time)</option>
-                  <option>UTC-8 (Pacific Time)</option>
-                </select>
+                <label>Organization</label>
+                <input 
+                  type="text" 
+                  v-model="userProfile.organization" 
+                  placeholder="Your Organization" 
+                  class="form-control"
+                >
               </div>
             </div>
           </div>
         </div>
 
         <!-- Security Settings -->
-        <div class="content-card">
+        <div id="security" class="content-card">
           <div class="card-header">
             <h2>Security Settings</h2>
           </div>
@@ -117,17 +157,17 @@
           <div class="security-section">
             <div class="form-group">
               <label>Current Password</label>
-              <input type="password" class="form-control">
+              <input type="password" v-model="securityForm.currentPassword" class="form-control">
             </div>
 
             <div class="form-group">
               <label>New Password</label>
-              <input type="password" class="form-control">
+              <input type="password" v-model="securityForm.newPassword" class="form-control">
             </div>
 
             <div class="form-group">
               <label>Confirm New Password</label>
-              <input type="password" class="form-control">
+              <input type="password" v-model="securityForm.confirmPassword" class="form-control">
             </div>
 
             <div class="security-options">
@@ -138,7 +178,7 @@
                   <p>Add an extra layer of security to your account</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox">
+                  <input type="checkbox" v-model="securityForm.enable2FA">
                   <span class="slider"></span>
                 </label>
               </div>
@@ -147,7 +187,7 @@
         </div>
 
         <!-- Notification Settings -->
-        <div class="content-card">
+        <div id="notifications" class="content-card">
           <div class="card-header">
             <h2>Notification Preferences</h2>
           </div>
@@ -161,7 +201,7 @@
                   <p>Get notified about breeding schedules and births</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" checked>
+                  <input type="checkbox" v-model="notificationPreferences.breeding_alerts">
                   <span class="slider"></span>
                 </label>
               </div>
@@ -172,7 +212,7 @@
                   <p>Receive alerts about health checks and vaccinations</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" checked>
+                  <input type="checkbox" v-model="notificationPreferences.health_alerts">
                   <span class="slider"></span>
                 </label>
               </div>
@@ -183,7 +223,7 @@
                   <p>Get notified when supplies are running low</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox">
+                  <input type="checkbox" v-model="notificationPreferences.stock_alerts">
                   <span class="slider"></span>
                 </label>
               </div>
@@ -196,10 +236,127 @@
 </template>
 
 <script>
+import { ref, reactive, onMounted } from 'vue'
+import userProfileService from '@/services/userProfile'
+
 export default {
   name: 'AppSettings',
   setup() {
-    return {}
+    const loading = ref(false)
+    const error = ref('')
+    const successMessage = ref('')
+
+    // User profile data
+    const userProfile = reactive({
+      id: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      fullName: '',
+      phone: '',
+      organization: '',
+      role: '',
+      avatarUrl: null,
+      roleId: null
+    })
+
+    // Security form
+    const securityForm = reactive({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+      enable2FA: false
+    })
+
+    // Notification preferences
+    const notificationPreferences = reactive({
+      breeding_alerts: true,
+      health_alerts: true,
+      stock_alerts: false
+    })
+
+    const loadUserProfile = async () => {
+      try {
+        loading.value = true
+        error.value = ''
+
+        // Load user profile
+        const profile = await userProfileService.getCurrentUserProfile()
+        Object.assign(userProfile, profile)
+
+        // Load user preferences
+        const preferences = await userProfileService.getUserPreferences()
+        if (preferences) {
+          Object.assign(notificationPreferences, {
+            breeding_alerts: preferences.breeding_alerts,
+            health_alerts: preferences.health_alerts,
+            stock_alerts: preferences.stock_alerts
+          })
+        }
+
+      } catch (err) {
+        console.error('Error loading user profile:', err)
+        error.value = 'Failed to load profile data: ' + err.message
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const saveAllChanges = async () => {
+      try {
+        loading.value = true
+        error.value = ''
+
+        // Save profile changes
+        await userProfileService.updateUserProfile({
+          firstName: userProfile.firstName,
+          lastName: userProfile.lastName,
+          phone: userProfile.phone,
+          organization: userProfile.organization,
+          avatarUrl: userProfile.avatarUrl
+        })
+
+        // Save notification preferences
+        await userProfileService.updateUserPreferences(notificationPreferences)
+
+        // Save password if provided
+        if (securityForm.newPassword && securityForm.newPassword === securityForm.confirmPassword) {
+          await userProfileService.updateUserPassword(securityForm.currentPassword, securityForm.newPassword)
+          // Clear password fields
+          securityForm.currentPassword = ''
+          securityForm.newPassword = ''
+          securityForm.confirmPassword = ''
+        }
+
+        successMessage.value = 'Settings saved successfully!'
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          successMessage.value = ''
+        }, 3000)
+
+      } catch (err) {
+        console.error('Error saving settings:', err)
+        error.value = 'Failed to save settings: ' + err.message
+      } finally {
+        loading.value = false
+      }
+    }
+
+    onMounted(() => {
+      loadUserProfile()
+    })
+
+    return {
+      loading,
+      error,
+      successMessage,
+      userProfile,
+      securityForm,
+      notificationPreferences,
+      loadUserProfile,
+      saveAllChanges
+    }
   }
 }
 </script>
@@ -207,6 +364,7 @@ export default {
 <style scoped>
 .settings-page {
   padding: 1.5rem;
+  scroll-behavior: smooth;
 }
 
 .page-header {
@@ -234,8 +392,13 @@ export default {
   transition: all 0.3s ease;
 }
 
-.primary-button:hover {
+.primary-button:hover:not(:disabled) {
   background: #2563eb;
+}
+
+.primary-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
 }
 
 .secondary-button {
@@ -269,6 +432,44 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.error-message {
+  color: #ef4444;
+  text-align: center;
+  margin: 0;
 }
 
 .nav-section {
