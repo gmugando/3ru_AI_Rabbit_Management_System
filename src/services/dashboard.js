@@ -108,7 +108,7 @@ class DashboardService {
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
-        .eq('status', 'active')
+        .eq('status', 'Active')
         .not('doe_id', 'is', null)
         .not('buck_id', 'is', null)
 
@@ -137,7 +137,7 @@ class DashboardService {
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
-        .eq('status', 'active')
+        .eq('status', 'Active')
         .not('expected_kindle_date', 'is', null)
         .gte('expected_kindle_date', firstDayOfMonth)
         .lt('expected_kindle_date', firstDayOfNextMonth)
