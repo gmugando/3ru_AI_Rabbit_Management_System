@@ -83,6 +83,129 @@
             placeholder="Add any notes or observations..."
           ></textarea>
         </div>
+
+        <!-- Kit Tracking Section (shown when status is Completed) -->
+        <div v-if="form.status === 'Completed'" class="kit-tracking-section">
+          <h3>Kit Information</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="actualKindleDate">Actual Kindle Date</label>
+              <input
+                type="date"
+                id="actualKindleDate"
+                v-model="form.actual_kindle_date"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="kitsBorn">Kits Born</label>
+              <input
+                type="number"
+                id="kitsBorn"
+                v-model="form.kits_born"
+                min="0"
+                max="20"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="kitsMale">Male Kits</label>
+              <input
+                type="number"
+                id="kitsMale"
+                v-model="form.kits_male"
+                min="0"
+                :max="form.kits_born || 0"
+                placeholder="0"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="kitsFemale">Female Kits</label>
+              <input
+                type="number"
+                id="kitsFemale"
+                v-model="form.kits_female"
+                min="0"
+                :max="form.kits_born || 0"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="kitsSurvived">Kits Survived</label>
+              <input
+                type="number"
+                id="kitsSurvived"
+                v-model="form.kits_survived"
+                min="0"
+                :max="form.kits_born || 0"
+                placeholder="0"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="averageBirthWeight">Average Birth Weight (g)</label>
+              <input
+                type="number"
+                id="averageBirthWeight"
+                v-model="form.average_birth_weight"
+                min="0"
+                step="0.1"
+                placeholder="0.0"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="kitColor">Kit Color</label>
+            <input
+              type="text"
+              id="kitColor"
+              v-model="form.kit_color"
+              placeholder="e.g., White, Black, Brown, Mixed"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="kindlingNotes">Kindling Notes</label>
+            <textarea
+              id="kindlingNotes"
+              v-model="form.kindling_notes"
+              rows="3"
+              placeholder="Any observations about the kindling process..."
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="weaningDate">Weaning Date</label>
+              <input
+                type="date"
+                id="weaningDate"
+                v-model="form.weaning_date"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="weaningCount">Weaned Kits</label>
+              <input
+                type="number"
+                id="weaningCount"
+                v-model="form.weaning_count"
+                min="0"
+                :max="form.kits_survived || 0"
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </div>
       </form>
     </div>
   </div>
@@ -94,6 +217,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
 import { generateId } from '@/utils/idGenerator'
 import { scheduleIntegration } from '@/services/scheduleIntegration'
+import kitManagementService from '@/services/kitManagement'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,6 +235,17 @@ const form = ref({
   expected_kindle_date: '',
   status: 'Planned',
   notes: '',
+  // Kit tracking fields
+  actual_kindle_date: '',
+  kits_born: 0,
+  kits_male: 0,
+  kits_female: 0,
+  kits_survived: 0,
+  average_birth_weight: null,
+  kit_color: '',
+  kindling_notes: '',
+  weaning_date: '',
+  weaning_count: 0,
 })
 
 async function fetchRabbits() {
@@ -159,6 +294,17 @@ async function fetchBreedingPlan() {
         expected_kindle_date: data.expected_kindle_date,
         status: data.status,
         notes: data.notes || '',
+        // Kit tracking fields
+        actual_kindle_date: data.actual_kindle_date || '',
+        kits_born: data.kits_born || 0,
+        kits_male: data.kits_male || 0,
+        kits_female: data.kits_female || 0,
+        kits_survived: data.kits_survived || 0,
+        average_birth_weight: data.average_birth_weight || null,
+        kit_color: data.kit_color || '',
+        kindling_notes: data.kindling_notes || '',
+        weaning_date: data.weaning_date || '',
+        weaning_count: data.weaning_count || 0,
       }
     }
   } catch (error) {
@@ -187,6 +333,19 @@ async function handleSubmit() {
       expected_kindle_date: form.value.expected_kindle_date,
       status: form.value.status,
       notes: form.value.notes,
+      // Kit tracking fields (only include if status is Completed)
+      ...(form.value.status === 'Completed' && {
+        actual_kindle_date: form.value.actual_kindle_date || null,
+        kits_born: form.value.kits_born || 0,
+        kits_male: form.value.kits_male || 0,
+        kits_female: form.value.kits_female || 0,
+        kits_survived: form.value.kits_survived || 0,
+        average_birth_weight: form.value.average_birth_weight || null,
+        kit_color: form.value.kit_color || null,
+        kindling_notes: form.value.kindling_notes || null,
+        weaning_date: form.value.weaning_date || null,
+        weaning_count: form.value.weaning_count || 0,
+      })
     }
 
     if (isEditing.value) {
@@ -196,6 +355,17 @@ async function handleSubmit() {
         .eq('id', route.params.id)
 
       if (error) throw error
+      
+      // If status is Completed and we have kit data, create individual kit records
+      if (planData.status === 'Completed' && planData.kits_born > 0) {
+        try {
+          await kitManagementService.createKitRecords(route.params.id, planData)
+          console.log('Created individual kit records')
+        } catch (kitError) {
+          console.error('Failed to create kit records:', kitError)
+          // Don't fail the whole operation if kit creation fails
+        }
+      }
     } else {
       // For new plans, generate a unique plan_id
       planData.plan_id = generateId('BP')
@@ -206,6 +376,17 @@ async function handleSubmit() {
         .select()
 
       if (error) throw error
+      
+      // If status is Completed and we have kit data, create individual kit records
+      if (planData.status === 'Completed' && planData.kits_born > 0 && data && data.length > 0) {
+        try {
+          await kitManagementService.createKitRecords(data[0].id, planData)
+          console.log('Created individual kit records')
+        } catch (kitError) {
+          console.error('Failed to create kit records:', kitError)
+          // Don't fail the whole operation if kit creation fails
+        }
+      }
       
       // Create breeding milestone events for new plans
       if (data && data.length > 0) {
@@ -350,5 +531,29 @@ onMounted(() => {
 .secondary-button:hover {
   background: #f8fafc;
   color: #1e293b;
+}
+
+.kit-tracking-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.kit-tracking-section h3 {
+  margin-bottom: 1.5rem;
+  color: #1e293b;
+  font-size: 1.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 
