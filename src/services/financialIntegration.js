@@ -171,8 +171,7 @@ export class FinancialIntegrationService {
         .from('rabbits')
         .select('id')
         .eq('created_by', userId)
-        .eq('status', 'active')
-        .or('is_deleted.is.null,is_deleted.eq.false')
+        .eq('is_deleted', false)
 
       if (rabbitError) {
         console.error('Rabbit query error:', rabbitError)

@@ -441,25 +441,8 @@ export default {
           return stock
         }).filter(stock => stock.initial_stock > 0) // Only show feeds that have been purchased
 
-        // If no real stock data, show sample data
-        if (formattedStock.length === 0) {
-          formattedStock.push(
-            {
-              feed_type: 'adult_rabbit_feed',
-              feed_brand: 'Premium Pellets',
-              current_stock: 65,
-              initial_stock: 100,
-              last_updated: new Date().toISOString().split('T')[0]
-            },
-            {
-              feed_type: 'growing_rabbit_feed',
-              feed_brand: 'Growth Formula',
-              current_stock: 35,
-              initial_stock: 100,
-              last_updated: new Date().toISOString().split('T')[0]
-            }
-          )
-        }
+        // If no real stock data, show empty state (no sample data)
+        // This ensures users only see their own data
 
         feedStock.value = formattedStock
 
@@ -491,23 +474,8 @@ export default {
         stockError.value = err.message
         console.error('Error loading stock data:', err)
         
-        // Fallback to sample data on error
-        feedStock.value = [
-          {
-            feed_type: 'adult_rabbit_feed',
-            feed_brand: 'Premium Pellets',
-            current_stock: 65,
-            initial_stock: 100,
-            last_updated: new Date().toISOString().split('T')[0]
-          },
-          {
-            feed_type: 'growing_rabbit_feed',
-            feed_brand: 'Growth Formula',
-            current_stock: 35,
-            initial_stock: 100,
-            last_updated: new Date().toISOString().split('T')[0]
-          }
-        ]
+        // No fallback sample data - show empty state instead
+        feedStock.value = []
       } finally {
         stockLoading.value = false
       }
