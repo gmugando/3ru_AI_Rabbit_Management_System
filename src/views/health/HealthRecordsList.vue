@@ -551,9 +551,17 @@ export default {
     
     const fetchRabbits = async () => {
       try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          console.error('User not authenticated:', userError)
+          return
+        }
+
         const { data, error: fetchError } = await supabase
           .from('rabbits')
           .select('id, rabbit_id, name')
+          .eq('created_by', user.id)
+          .eq('is_deleted', false)
           .order('rabbit_id')
         
         if (fetchError) throw fetchError

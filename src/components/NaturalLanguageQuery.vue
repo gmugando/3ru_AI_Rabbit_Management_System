@@ -255,7 +255,11 @@
         <!-- SQL Query Display -->
         <details class="sql-display">
           <summary>View Generated SQL</summary>
-          <pre><code>{{ currentResult.query }}</code></pre>
+          <pre><code>{{ getSqlQuery() }}</code></pre>
+          <!-- Debug info -->
+          <div v-if="!getSqlQuery()" class="debug-info">
+            <small>Debug: Available properties: {{ Object.keys(currentResult) }}</small>
+          </div>
         </details>
       </div>
     </div>
@@ -586,11 +590,26 @@ export default {
       return statusTypes[status] || 'secondary'
     },
 
-    isHiddenField(key) {
-      // Hide less important fields in both views
-      const hiddenFields = ['id', 'created_at', 'updated_at', 'created_by']
-      return hiddenFields.includes(key)
-    },
+         isHiddenField(key) {
+       // Hide less important fields in both views
+       const hiddenFields = ['id', 'created_at', 'updated_at', 'created_by']
+       return hiddenFields.includes(key)
+     },
+
+     getSqlQuery() {
+       // Check multiple possible locations for the SQL query
+       if (this.currentResult?.query) {
+         return this.currentResult.query
+       }
+       if (this.currentResult?.sqlData?.query) {
+         return this.currentResult.sqlData.query
+       }
+       if (this.currentResult?.sqlData?.data && this.currentResult.sqlData.data.length > 0) {
+         // If we have SQL data but no explicit query, show a generic message
+         return 'SQL query executed successfully (query details not available)'
+       }
+       return null
+     },
 
 
   }
