@@ -490,6 +490,7 @@ export default {
           .from('transactions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .order('date', { ascending: false })
           .limit(5)
 
@@ -531,6 +532,7 @@ export default {
           .from('transactions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .gte('date', firstDayOfMonth.toISOString().split('T')[0])
           .lte('date', now.toISOString().split('T')[0])
         
@@ -541,6 +543,7 @@ export default {
           .from('transactions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .gte('date', firstDayOfPrevMonth.toISOString().split('T')[0])
           .lt('date', firstDayOfMonth.toISOString().split('T')[0])
         
