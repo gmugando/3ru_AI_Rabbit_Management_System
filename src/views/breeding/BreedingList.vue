@@ -145,7 +145,7 @@
                 <label>Expected Kindle:</label>
                 <span>{{ formatDate(plan.expected_kindle_date) }}</span>
               </div>
-              <template v-if="plan.status !== 'planned'">
+              <template v-if="plan.status !== 'Planned'">
                 <div class="detail-group" v-if="plan.actual_mating_date">
                   <label>Actual Mating:</label>
                   <span>{{ formatDate(plan.actual_mating_date) }}</span>

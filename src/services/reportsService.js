@@ -242,7 +242,7 @@ export class ReportsService {
     // Calculate breeding pairs
     const activePairs = new Set()
     breedingRecords?.forEach(record => {
-      if (record.status === 'planned' || record.status === 'successful') {
+              if (record.status === 'Planned' || record.status === 'successful') {
         activePairs.add(`${record.doe_id}-${record.buck_id}`)
       }
     })
@@ -656,7 +656,7 @@ export class ReportsService {
   calculateBreedingSummary(breedingPlans) {
     const total = breedingPlans.length
     const successful = breedingPlans.filter(p => p.status === 'successful').length
-    const planned = breedingPlans.filter(p => p.status === 'planned').length
+          const planned = breedingPlans.filter(p => p.status === 'Planned').length
     const failed = breedingPlans.filter(p => p.status === 'failed').length
     
     const successRate = total > 0 ? (successful / total) * 100 : 0
