@@ -115,8 +115,8 @@
           <div v-for="treatment in activeTreatments.slice(0, 3)" :key="treatment.id" class="treatment-item">
             <div class="treatment-header">
               <div class="rabbit-info">
-                <h4>{{ treatment.rabbit_tag || treatment.rabbit_id }}</h4>
-                <span class="breed">{{ treatment.breed }}</span>
+                <h4>{{ treatment.rabbit?.name || treatment.rabbit_id }}</h4>
+                <span class="breed">{{ treatment.rabbit?.breed || 'Unknown breed' }}</span>
               </div>
               <span class="status" :class="getTreatmentStatus(treatment).class">
                 {{ getTreatmentStatus(treatment).text }}
@@ -189,8 +189,8 @@
             <tbody>
               <tr v-for="record in recentHealthRecords" :key="record.id">
                 <td>
-                  <strong>{{ record.rabbit_tag || record.rabbit_id }}</strong>
-                  <div class="rabbit-breed">{{ record.breed }}</div>
+                  <strong>{{ record.rabbit?.name || record.rabbit_id }}</strong>
+                  <div class="rabbit-breed">{{ record.rabbit?.breed || 'Unknown breed' }}</div>
                 </td>
                 <td>
                   <div class="condition-cell">
@@ -289,16 +289,28 @@ export default {
         isLoading.value = true
         error.value = ''
         
+        // Get current user for filtering
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('User not authenticated')
+        }
+        
+        // Use direct query instead of view to avoid potential issues
         const { data, error: fetchError } = await supabase
-          .from('health_records_with_rabbit')
-          .select('*')
+          .from('health_records')
+          .select(`
+            *,
+            rabbit:rabbits(rabbit_id, name, breed)
+          `)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .order('record_date', { ascending: false })
           .limit(5)
         
         if (fetchError) throw fetchError
         
         recentHealthRecords.value = data || []
-        console.log('Fetched recent health records:', data?.length || 0)
+        console.log('Fetched user recent health records:', data?.length || 0)
         
       } catch (err) {
         console.error('Error fetching recent health records:', err)
@@ -314,9 +326,21 @@ export default {
         isLoadingTreatments.value = true
         treatmentError.value = ''
         
+        // Get current user for filtering
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('User not authenticated')
+        }
+        
+        // Use direct query instead of view to avoid potential issues
         const { data, error: fetchError } = await supabase
-          .from('health_records_with_rabbit')
-          .select('*')
+          .from('health_records')
+          .select(`
+            *,
+            rabbit:rabbits(rabbit_id, name, breed)
+          `)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .in('status', ['under_treatment', 'under_observation'])
           .not('treatment_type', 'is', null)
           .or('medication.not.is.null,treatment_type.not.is.null')
@@ -326,7 +350,7 @@ export default {
         if (fetchError) throw fetchError
         
         activeTreatments.value = data || []
-        console.log('Fetched active treatments:', data?.length || 0)
+        console.log('Fetched user active treatments:', data?.length || 0)
         
       } catch (err) {
         console.error('Error fetching active treatments:', err)
@@ -342,20 +366,27 @@ export default {
         isLoadingStats.value = true
         statsError.value = ''
         
-        // Start with a simple approach - just get rabbits count
-        console.log('Fetching health statistics...')
+        // Get current user for filtering
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('User not authenticated')
+        }
         
-        // Get all rabbits (simplified query)
+        console.log('Fetching health statistics for user:', user.id)
+        
+        // Get user's rabbits only
         const { data: rabbits, error: rabbitsError } = await supabase
           .from('rabbits')
           .select('id, rabbit_id, name')
+          .eq('created_by', user.id)
+          .eq('is_deleted', false)
         
         if (rabbitsError) {
           console.error('Rabbits query error:', rabbitsError)
           throw new Error(`Failed to fetch rabbits: ${rabbitsError.message}`)
         }
         
-        console.log('Fetched rabbits:', rabbits?.length || 0)
+        console.log('Fetched user rabbits:', rabbits?.length || 0)
         const totalRabbits = rabbits?.length || 0
         
         // Try to get health records without date filtering first
@@ -363,10 +394,12 @@ export default {
         let recordsError = null
         
         try {
-          console.log('Attempting to fetch health records...')
+          console.log('Attempting to fetch user health records...')
           const { data, error } = await supabase
             .from('health_records')
             .select('rabbit_id, status, record_date')
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
             .order('record_date', { ascending: false })
             .limit(100) // Limit to avoid large queries
           
@@ -376,7 +409,7 @@ export default {
           if (recordsError) {
             console.error('Health records error:', recordsError)
           } else {
-            console.log('Fetched health records:', healthRecords.length)
+            console.log('Fetched user health records:', healthRecords.length)
           }
         } catch (err) {
           console.log('Health records table might not exist yet')

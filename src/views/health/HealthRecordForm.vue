@@ -516,6 +516,8 @@ export default {
         const { data, error: fetchError } = await supabase
           .from('rabbits')
           .select('id, rabbit_id, name, breed, status')
+          .eq('created_by', user.id)
+          .eq('is_deleted', false)
           .order('rabbit_id')
 
         if (fetchError) throw fetchError

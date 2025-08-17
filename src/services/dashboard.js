@@ -58,37 +58,24 @@ class DashboardService {
         }
       }
       
-      // Get total rabbits count directly from database - same pattern as RabbitList
-      const { data: allRabbits, error: rabbitsError } = await this.supabase
-        .from('rabbits')
-        .select('*')
+      // Use the new database function for better performance and security
+      const { data: stats, error: statsError } = await this.supabase
+        .rpc('get_user_dashboard_stats')
 
-      console.log('Rabbits query result:', { data: allRabbits, error: rabbitsError })
-
-      if (rabbitsError) {
-        console.error('Error fetching rabbits:', rabbitsError)
-        throw rabbitsError
+      if (statsError) {
+        console.error('Error fetching dashboard stats:', statsError)
+        throw statsError
       }
 
-      const totalRabbits = allRabbits?.length || 0
-      const activeRabbits = allRabbits?.filter(rabbit => rabbit.status === 'active').length || 0
-
-      console.log('Rabbit counts:', { total: totalRabbits, active: activeRabbits })
-
-      // Get additional stats directly from database
-      const [breedingPairs, expectedBirths, monthlyExpenses] = await Promise.all([
-        this.getBreedingPairsCount(),
-        this.getExpectedBirthsCount(),
-        this.getMonthlyExpenses()
-      ])
+      console.log('Dashboard stats:', stats)
 
       return {
-        totalRabbits,
-        breedingPairs,
-        expectedBirths,
-        monthlyRevenue: this.calculateMonthlyRevenue(monthlyExpenses),
-        activeRabbits,
-        monthlyExpenses
+        totalRabbits: stats.total_rabbits || 0,
+        activeRabbits: stats.active_rabbits || 0,
+        breedingPairs: stats.breeding_pairs || 0,
+        expectedBirths: stats.expected_births || 0,
+        monthlyExpenses: stats.monthly_expenses || 0,
+        monthlyRevenue: this.calculateMonthlyRevenue(stats.monthly_expenses || 0)
       }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
@@ -105,9 +92,17 @@ class DashboardService {
 
   async getBreedingPairsCount() {
     try {
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return 0
+      }
+
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
+        .eq('created_by', user.id)
+        .eq('is_deleted', false)
         .eq('status', 'Active')
         .not('doe_id', 'is', null)
         .not('buck_id', 'is', null)
@@ -122,6 +117,12 @@ class DashboardService {
 
   async getExpectedBirthsCount() {
     try {
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return 0
+      }
+
       const currentDate = new Date()
       const currentMonth = currentDate.getMonth() + 1
       const currentYear = currentDate.getFullYear()
@@ -137,6 +138,8 @@ class DashboardService {
       const { data, error } = await this.supabase
         .from('breeding_plans')
         .select('id')
+        .eq('created_by', user.id)
+        .eq('is_deleted', false)
         .eq('status', 'Active')
         .not('expected_kindle_date', 'is', null)
         .gte('expected_kindle_date', firstDayOfMonth)
@@ -152,12 +155,20 @@ class DashboardService {
 
   async getMonthlyExpenses() {
     try {
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return 0
+      }
+
       const currentMonth = new Date().getMonth() + 1
       const currentYear = new Date().getFullYear()
 
       const { data, error } = await this.supabase
         .from('transactions')
         .select('amount')
+        .eq('user_id', user.id)
+        .eq('is_deleted', false)
         .eq('type', 'expense')
         .gte('date', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
         .lt('date', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`)
@@ -319,7 +330,16 @@ class DashboardService {
 
   async getRecentActivities() {
     try {
-      // Get recent breeding activities
+      // Get current user for filtering
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return []
+      }
+
+      console.log('Fetching recent activities for user:', user.id)
+
+      // Get recent breeding activities for current user
       const { data: breedingActivities, error: breedingError } = await this.supabase
         .from('breeding_plans')
         .select(`
@@ -329,15 +349,19 @@ class DashboardService {
           doe:rabbits!breeding_plans_doe_id_fkey(name),
           buck:rabbits!breeding_plans_buck_id_fkey(name)
         `)
+        .eq('created_by', user.id)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(5)
 
       if (breedingError) throw breedingError
 
-      // Get recent transactions
+      // Get recent transactions for current user
       const { data: transactions, error: transactionError } = await this.supabase
         .from('transactions')
         .select('id, created_at, amount, description, type')
+        .eq('user_id', user.id)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(5)
 
@@ -381,6 +405,15 @@ class DashboardService {
 
   async getUpcomingTasks() {
     try {
+      // Get current user for filtering
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return []
+      }
+
+      console.log('Fetching upcoming tasks for user:', user.id)
+
       const tasks = []
 
       const currentDate = new Date()
@@ -392,7 +425,7 @@ class DashboardService {
       const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear
       const firstDayOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
 
-      // Get upcoming breeding plans for this month
+      // Get upcoming breeding plans for current user this month
       const { data: upcomingBreedings, error: breedingError } = await this.supabase
         .from('breeding_plans')
         .select(`
@@ -400,6 +433,8 @@ class DashboardService {
           planned_date,
           doe:rabbits!breeding_plans_doe_id_fkey(name)
         `)
+        .eq('created_by', user.id)
+        .eq('is_deleted', false)
         .eq('status', 'planned')
         .gte('planned_date', new Date().toISOString())
         .lt('planned_date', firstDayOfNextMonth)
@@ -417,10 +452,12 @@ class DashboardService {
         })
       }
 
-      // Get upcoming feeding schedules for this month
+      // Get upcoming feeding schedules for current user this month
       const { data: feedingSchedules, error: feedingError } = await this.supabase
         .from('feeding_schedules')
         .select('id, next_feeding_date, description')
+        .eq('user_id', user.id)
+        .eq('is_deleted', false)
         .gte('next_feeding_date', new Date().toISOString())
         .lt('next_feeding_date', firstDayOfNextMonth)
         .order('next_feeding_date', { ascending: true })

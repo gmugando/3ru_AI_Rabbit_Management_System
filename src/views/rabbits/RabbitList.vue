@@ -188,9 +188,16 @@ export default {
         isLoading.value = true
         errorMessage.value = ''
 
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          throw new Error('User not authenticated')
+        }
+
         const { data, error } = await supabase
           .from('rabbits')
           .select('*')
+          .eq('created_by', user.id)
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -208,10 +215,21 @@ export default {
       if (!confirm(`Are you sure you want to delete ${rabbit.name}?`)) return
 
       try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          throw new Error('User not authenticated')
+        }
+
+        // Soft delete - update is_deleted flag instead of hard delete
         const { error } = await supabase
           .from('rabbits')
-          .delete()
+          .update({
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: user.id
+          })
           .eq('id', rabbit.id)
+          .eq('created_by', user.id)
 
         if (error) throw error
 

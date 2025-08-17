@@ -237,6 +237,12 @@ export default {
     const fetchBreedingPlans = async () => {
       try {
         errorMessage.value = ''
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          throw new Error('User not authenticated')
+        }
+
         const { data, error } = await supabase
           .from('breeding_plans')
           .select(`
@@ -244,6 +250,8 @@ export default {
             buck:rabbits!breeding_plans_buck_id_fkey(id, name, breed),
             doe:rabbits!breeding_plans_doe_id_fkey(id, name, breed)
           `)
+          .eq('created_by', user.id)
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -265,10 +273,22 @@ export default {
       try {
         errorMessage.value = ''
         isDeleting.value = plan.id
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          throw new Error('User not authenticated')
+        }
+
+        // Soft delete - update is_deleted flag instead of hard delete
         const { error } = await supabase
           .from('breeding_plans')
-          .delete()
+          .update({
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: user.id
+          })
           .eq('id', plan.id)
+          .eq('created_by', user.id)
 
         if (error) throw error
 

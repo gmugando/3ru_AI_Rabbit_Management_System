@@ -251,9 +251,17 @@ const form = ref({
 async function fetchRabbits() {
   try {
     errorMessage.value = ''
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
     const { data: males, error: maleError } = await supabase
       .from('rabbits')
       .select('id, name')
+      .eq('created_by', user.id)
+      .eq('is_deleted', false)
       .eq('gender', 'Male')
       .eq('status', 'Active')
 
@@ -263,6 +271,8 @@ async function fetchRabbits() {
     const { data: females, error: femaleError } = await supabase
       .from('rabbits')
       .select('id, name')
+      .eq('created_by', user.id)
+      .eq('is_deleted', false)
       .eq('gender', 'Female')
       .eq('status', 'Active')
 
@@ -279,10 +289,18 @@ async function fetchBreedingPlan() {
 
   try {
     errorMessage.value = ''
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
     const { data, error } = await supabase
       .from('breeding_plans')
       .select('*')
       .eq('id', route.params.id)
+      .eq('created_by', user.id)
+      .eq('is_deleted', false)
       .single()
 
     if (error) throw error
@@ -319,6 +337,12 @@ async function handleSubmit() {
     loading.value = true
     errorMessage.value = ''
 
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
     // Validate dates
     const plannedDate = new Date(form.value.planned_date)
     const expectedKindleDate = new Date(form.value.expected_kindle_date)
@@ -333,6 +357,7 @@ async function handleSubmit() {
       expected_kindle_date: form.value.expected_kindle_date,
       status: form.value.status,
       notes: form.value.notes,
+      created_by: user.id, // Add user ID for new records
       // Kit tracking fields (only include if status is Completed)
       ...(form.value.status === 'Completed' && {
         actual_kindle_date: form.value.actual_kindle_date || null,
@@ -353,6 +378,7 @@ async function handleSubmit() {
         .from('breeding_plans')
         .update(planData)
         .eq('id', route.params.id)
+        .eq('created_by', user.id)
 
       if (error) throw error
       
