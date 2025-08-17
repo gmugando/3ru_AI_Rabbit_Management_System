@@ -88,7 +88,15 @@
             </select>
           </div>
         </div>
-        <div class="chart-container">
+        <div v-if="analyticsLoading" class="loading-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading financial data...</span>
+        </div>
+        <div v-else-if="analyticsError" class="error-state">
+          <p>{{ analyticsError }}</p>
+          <button @click="loadFinancialAnalytics" class="retry-btn">Retry</button>
+        </div>
+        <div v-else class="chart-container">
           <canvas ref="financeChart"></canvas>
         </div>
       </div>
@@ -425,12 +433,13 @@ export default {
       return nameMap[category] || category
     }
 
+    // Initialize with empty data - will be populated with real user data
     const financeData = {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      labels: [],
       datasets: [
         {
           label: 'Revenue',
-          data: [8500, 9200, 10500, 11200, 12000, 12450],
+          data: [],
           borderColor: '#10b981',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
           tension: 0.4,
@@ -438,7 +447,7 @@ export default {
         },
         {
           label: 'Expenses',
-          data: [3200, 3600, 3900, 4100, 4000, 4280],
+          data: [],
           borderColor: '#ef4444',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
           tension: 0.4,
@@ -622,7 +631,14 @@ export default {
 
       try {
         const trends = farmAnalytics.value.monthlyTrends
-        if (!Array.isArray(trends) || trends.length === 0) return
+        if (!Array.isArray(trends) || trends.length === 0) {
+          // Show empty state if no data
+          chartInstance.data.labels = ['No Data']
+          chartInstance.data.datasets[0].data = [0]
+          chartInstance.data.datasets[1].data = [0]
+          chartInstance.update()
+          return
+        }
 
         // Update chart data with safety checks
         chartInstance.data.labels = trends.map(t => {
@@ -684,18 +700,23 @@ export default {
         // Initialize currency service
         await currencyService.initialize()
         
-        // Initialize chart
+        // Fetch transactions and analytics first
+        await fetchRecentTransactions()
+        await loadFinancialAnalytics()
+        
+        // Initialize chart only after we have data
         if (financeChart.value) {
           chartInstance = new Chart(financeChart.value, {
             type: 'line',
             data: financeData,
             options: chartOptions
           })
+          
+          // Update chart with real data if available
+          if (farmAnalytics.value && farmAnalytics.value.monthlyTrends) {
+            updateFinancialChart()
+          }
         }
-        
-        // Fetch transactions and analytics
-        await fetchRecentTransactions()
-        await loadFinancialAnalytics()
       } catch (error) {
         console.error('Error during component initialization:', error)
       }
