@@ -43,34 +43,36 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="plannedDate">Planned Mating Date</label>
-          <input
-            type="date"
-            id="plannedDate"
-            v-model="form.planned_date"
-            required
-          />
-        </div>
+                 <div class="form-group">
+           <label for="plannedDate">Planned Mating Date</label>
+           <input
+             type="date"
+             id="plannedDate"
+             v-model="form.planned_date"
+             @change="calculateExpectedKindleDate"
+             required
+           />
+         </div>
 
-        <div class="form-group">
-          <label for="expectedKindleDate">Expected Kindle Date</label>
-          <input
-            type="date"
-            id="expectedKindleDate"
-            v-model="form.expected_kindle_date"
-            required
-          />
-        </div>
+         <div class="form-group">
+           <label for="expectedKindleDate">Expected Kindle Date</label>
+           <input
+             type="date"
+             id="expectedKindleDate"
+             v-model="form.expected_kindle_date"
+             required
+           />
+           <small class="form-help">Automatically calculated based on 31-day gestation period</small>
+         </div>
 
                  <div class="form-group">
            <label for="status">Status</label>
            <select v-model="form.status" id="status" required>
-             <option value="planned">Planned</option>
-             <option value="active">Active</option>
-             <option value="completed">Completed</option>
-             <option value="failed">Failed</option>
-             <option value="cancelled">Cancelled</option>
+             <option value="Planned">Planned</option>
+             <option value="Active">Active</option>
+             <option value="Completed">Completed</option>
+             <option value="Failed">Failed</option>
+             <option value="Cancelled">Cancelled</option>
            </select>
          </div>
 
@@ -84,8 +86,8 @@
           ></textarea>
         </div>
 
-                 <!-- Kit Tracking Section (shown when status is completed) -->
-         <div v-if="form.status === 'completed'" class="kit-tracking-section">
+                 <!-- Kit Tracking Section (shown when status is Completed) -->
+         <div v-if="form.status === 'Completed'" class="kit-tracking-section">
           <h3>Kit Information</h3>
           
           <div class="form-row">
@@ -226,14 +228,30 @@ const maleRabbits = ref([])
 const femaleRabbits = ref([])
 const errorMessage = ref('')
 
-const isEditing = computed(() => route.params.id !== undefined)
+    const isEditing = computed(() => route.params.id !== undefined)
 
-const form = ref({
+    const calculateExpectedKindleDate = () => {
+      if (form.value.planned_date) {
+        const plannedDate = new Date(form.value.planned_date)
+        // Add 31 days for average rabbit gestation period
+        const expectedDate = new Date(plannedDate)
+        expectedDate.setDate(plannedDate.getDate() + 31)
+        
+        // Format as YYYY-MM-DD for the date input
+        const year = expectedDate.getFullYear()
+        const month = String(expectedDate.getMonth() + 1).padStart(2, '0')
+        const day = String(expectedDate.getDate()).padStart(2, '0')
+        
+        form.value.expected_kindle_date = `${year}-${month}-${day}`
+      }
+    }
+
+    const form = ref({
   buck_id: '',
   doe_id: '',
   planned_date: '',
   expected_kindle_date: '',
-  status: 'planned',
+  status: 'Planned',
   notes: '',
   // Kit tracking fields
   actual_kindle_date: '',
@@ -358,8 +376,8 @@ async function handleSubmit() {
       status: form.value.status,
       notes: form.value.notes,
       created_by: user.id, // Add user ID for new records
-             // Kit tracking fields (only include if status is completed)
-       ...(form.value.status === 'completed' && {
+             // Kit tracking fields (only include if status is Completed)
+       ...(form.value.status === 'Completed' && {
         actual_kindle_date: form.value.actual_kindle_date || null,
         kits_born: form.value.kits_born || 0,
         kits_male: form.value.kits_male || 0,
@@ -382,8 +400,8 @@ async function handleSubmit() {
 
       if (error) throw error
       
-             // If status is completed and we have kit data, create individual kit records
-       if (planData.status === 'completed' && planData.kits_born > 0) {
+             // If status is Completed and we have kit data, create individual kit records
+       if (planData.status === 'Completed' && planData.kits_born > 0) {
         try {
           await kitManagementService.createKitRecords(route.params.id, planData)
           console.log('Created individual kit records')
@@ -403,8 +421,8 @@ async function handleSubmit() {
 
       if (error) throw error
       
-             // If status is completed and we have kit data, create individual kit records
-       if (planData.status === 'completed' && planData.kits_born > 0 && data && data.length > 0) {
+             // If status is Completed and we have kit data, create individual kit records
+       if (planData.status === 'Completed' && planData.kits_born > 0 && data && data.length > 0) {
         try {
           await kitManagementService.createKitRecords(data[0].id, planData)
           console.log('Created individual kit records')
@@ -506,11 +524,19 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-.form-group textarea {
-  resize: vertical;
-}
+ .form-group textarea {
+   resize: vertical;
+ }
 
-.error-message {
+ .form-help {
+   display: block;
+   margin-top: 0.25rem;
+   font-size: 0.875rem;
+   color: #64748b;
+   font-style: italic;
+ }
+
+ .error-message {
   background: #fee2e2;
   color: #ef4444;
   padding: 1rem;
