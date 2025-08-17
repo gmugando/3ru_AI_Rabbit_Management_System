@@ -63,16 +63,16 @@
           />
         </div>
 
-        <div class="form-group">
-          <label for="status">Status</label>
-          <select v-model="form.status" id="status" required>
-            <option value="Planned">Planned</option>
-            <option value="Active">Active</option>
-            <option value="Completed">Completed</option>
-            <option value="Failed">Failed</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-        </div>
+                 <div class="form-group">
+           <label for="status">Status</label>
+           <select v-model="form.status" id="status" required>
+             <option value="planned">Planned</option>
+             <option value="active">Active</option>
+             <option value="completed">Completed</option>
+             <option value="failed">Failed</option>
+             <option value="cancelled">Cancelled</option>
+           </select>
+         </div>
 
         <div class="form-group">
           <label for="notes">Notes</label>
@@ -84,8 +84,8 @@
           ></textarea>
         </div>
 
-        <!-- Kit Tracking Section (shown when status is Completed) -->
-        <div v-if="form.status === 'Completed'" class="kit-tracking-section">
+                 <!-- Kit Tracking Section (shown when status is completed) -->
+         <div v-if="form.status === 'completed'" class="kit-tracking-section">
           <h3>Kit Information</h3>
           
           <div class="form-row">
@@ -233,7 +233,7 @@ const form = ref({
   doe_id: '',
   planned_date: '',
   expected_kindle_date: '',
-  status: 'Planned',
+  status: 'planned',
   notes: '',
   // Kit tracking fields
   actual_kindle_date: '',
@@ -358,8 +358,8 @@ async function handleSubmit() {
       status: form.value.status,
       notes: form.value.notes,
       created_by: user.id, // Add user ID for new records
-      // Kit tracking fields (only include if status is Completed)
-      ...(form.value.status === 'Completed' && {
+             // Kit tracking fields (only include if status is completed)
+       ...(form.value.status === 'completed' && {
         actual_kindle_date: form.value.actual_kindle_date || null,
         kits_born: form.value.kits_born || 0,
         kits_male: form.value.kits_male || 0,
@@ -382,8 +382,8 @@ async function handleSubmit() {
 
       if (error) throw error
       
-      // If status is Completed and we have kit data, create individual kit records
-      if (planData.status === 'Completed' && planData.kits_born > 0) {
+             // If status is completed and we have kit data, create individual kit records
+       if (planData.status === 'completed' && planData.kits_born > 0) {
         try {
           await kitManagementService.createKitRecords(route.params.id, planData)
           console.log('Created individual kit records')
@@ -403,8 +403,8 @@ async function handleSubmit() {
 
       if (error) throw error
       
-      // If status is Completed and we have kit data, create individual kit records
-      if (planData.status === 'Completed' && planData.kits_born > 0 && data && data.length > 0) {
+             // If status is completed and we have kit data, create individual kit records
+       if (planData.status === 'completed' && planData.kits_born > 0 && data && data.length > 0) {
         try {
           await kitManagementService.createKitRecords(data[0].id, planData)
           console.log('Created individual kit records')

@@ -58,25 +58,48 @@ class DashboardService {
         }
       }
       
-      // Use the new database function for better performance and security
-      const { data: stats, error: statsError } = await this.supabase
-        .rpc('get_user_dashboard_stats')
+      // Try to use the database function first
+      try {
+        const { data: stats, error: statsError } = await this.supabase
+          .rpc('get_user_dashboard_stats')
 
-      if (statsError) {
-        console.error('Error fetching dashboard stats:', statsError)
-        throw statsError
+        if (!statsError && stats) {
+          console.log('Dashboard stats from RPC:', stats)
+          return {
+            totalRabbits: stats.total_rabbits || 0,
+            activeRabbits: stats.active_rabbits || 0,
+            breedingPairs: stats.breeding_pairs || 0,
+            expectedBirths: stats.expected_births || 0,
+            monthlyExpenses: stats.monthly_expenses || 0,
+            monthlyRevenue: this.calculateMonthlyRevenue(stats.monthly_expenses || 0)
+          }
+        }
+      } catch (rpcError) {
+        console.warn('RPC function failed, falling back to direct queries:', rpcError)
       }
-
-      console.log('Dashboard stats:', stats)
-
-      return {
-        totalRabbits: stats.total_rabbits || 0,
-        activeRabbits: stats.active_rabbits || 0,
-        breedingPairs: stats.breeding_pairs || 0,
-        expectedBirths: stats.expected_births || 0,
-        monthlyExpenses: stats.monthly_expenses || 0,
-        monthlyRevenue: this.calculateMonthlyRevenue(stats.monthly_expenses || 0)
+      
+      // Fallback to direct queries if RPC fails
+      console.log('Using fallback direct queries...')
+      
+      const [totalRabbits, breedingPairs, expectedBirths, monthlyExpenses] = await Promise.all([
+        this.getTotalRabbitsCount(),
+        this.getBreedingPairsCount(),
+        this.getExpectedBirthsCount(),
+        this.getMonthlyExpenses()
+      ])
+      
+      const stats = {
+        totalRabbits,
+        activeRabbits: totalRabbits, // Assume all rabbits are active for now
+        breedingPairs,
+        expectedBirths,
+        monthlyExpenses,
+        monthlyRevenue: this.calculateMonthlyRevenue(monthlyExpenses)
       }
+      
+      console.log('Dashboard stats from direct queries:', stats)
+      return stats
+      
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
       return {
@@ -87,6 +110,28 @@ class DashboardService {
         activeRabbits: 0,
         monthlyExpenses: 0
       }
+    }
+  }
+
+  async getTotalRabbitsCount() {
+    try {
+      const { data: { user }, error: userError } = await this.supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User not authenticated:', userError)
+        return 0
+      }
+
+      const { data, error } = await this.supabase
+        .from('rabbits')
+        .select('id')
+        .eq('created_by', user.id)
+        .eq('is_deleted', false)
+
+      if (error) throw error
+      return data?.length || 0
+    } catch (error) {
+      console.error('Error fetching total rabbits count:', error)
+      return 0
     }
   }
 
@@ -103,7 +148,7 @@ class DashboardService {
         .select('id')
         .eq('created_by', user.id)
         .eq('is_deleted', false)
-        .eq('status', 'Active')
+        .in('status', ['planned', 'active'])
         .not('doe_id', 'is', null)
         .not('buck_id', 'is', null)
 
@@ -140,7 +185,7 @@ class DashboardService {
         .select('id')
         .eq('created_by', user.id)
         .eq('is_deleted', false)
-        .eq('status', 'Active')
+        .in('status', ['planned', 'active'])
         .not('expected_kindle_date', 'is', null)
         .gte('expected_kindle_date', firstDayOfMonth)
         .lt('expected_kindle_date', firstDayOfNextMonth)
