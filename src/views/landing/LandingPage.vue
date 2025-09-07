@@ -247,7 +247,7 @@
         <div class="footer-section">
           <h4>Contact</h4>
           <p>Email: support@{{ getEmailDomain() }}</p>
-          <p>Phone: +27 74 079 8159</p>
+          <p>Phone: +27 81 581 4199</p>
         </div>
       </div>
       <div class="footer-bottom">
