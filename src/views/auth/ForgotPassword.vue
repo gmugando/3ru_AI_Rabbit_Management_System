@@ -84,7 +84,7 @@ export default {
 }
 
 .forgot-password-logo {
-  width: 80px;
+  width: 150px;
   height: 80px;
   margin-bottom: 1rem;
 }

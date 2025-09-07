@@ -2,8 +2,8 @@
   <div class="register-container">
     <div class="register-card">
       <div class="register-header">
-        <img src="@/assets/logo.png" alt="RMS Logo" class="register-logo">
-        <h1>Join 3RU Rabbit Management System</h1>
+        <img src="@/assets/logo.png" alt="Rabbitry Logo" class="register-logo">
+        <h1>Join Our Rabbit Management System</h1>
         <p class="subtitle">Create your account to get started</p>
       </div>
 
@@ -159,6 +159,12 @@
           </router-link>
         </p>
       </form>
+      
+      <!-- Proudly South African Logo above AppInfo -->
+      <div class="proudly-sa-section">
+        <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo">
+      </div>
+      
       <AppInfo />
     </div>
   </div>
@@ -301,7 +307,7 @@ export default {
 }
 
 .register-logo {
-  width: 80px;
+  width: 150px;
   height: 80px;
   margin-bottom: 1rem;
 }
@@ -495,6 +501,25 @@ export default {
   cursor: not-allowed;
 }
 
+/* Proudly South African Logo Section */
+.proudly-sa-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2rem 0 1rem 0;
+}
+
+.proudly-sa-logo {
+  height: 120px;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease;
+}
+
+.proudly-sa-logo:hover {
+  transform: scale(1.05);
+}
+
 @media (max-width: 640px) {
   .register-card {
     padding: 1.5rem;
@@ -510,6 +535,14 @@ export default {
 
   .register-header h1 {
     font-size: 1.5rem;
+  }
+
+  .proudly-sa-section {
+    margin: 1.5rem 0 0.75rem 0;
+  }
+
+  .proudly-sa-logo {
+    height: 80px;
   }
 }
 </style> 

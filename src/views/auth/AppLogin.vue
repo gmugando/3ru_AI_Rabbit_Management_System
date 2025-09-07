@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="login-header">
         <img src="@/assets/logo.png" alt="RMS Logo" class="login-logo">
-        <h1>3RU Rabbit Management System</h1>
+        <h1>Rabbit Management System</h1>
       </div>
       <form @submit.prevent="handleLogin" class="login-form">
         <div v-if="errorMessage" class="error-message">
@@ -52,9 +52,15 @@
             <i class="pi pi-arrow-left"></i> Back to Home
           </router-link>
         </p>
-      </form>
-      <AppInfo />
-    </div>
+             </form>
+       
+       <!-- Proudly South African Logo above AppInfo -->
+       <div class="proudly-sa-section">
+         <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo">
+       </div>
+       
+       <AppInfo />
+     </div>
   </div>
 </template>
 
@@ -157,6 +163,7 @@ export default {
   justify-content: center;
   background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
   padding: 2rem;
+  position: relative;
 }
 
 .login-card {
@@ -174,7 +181,7 @@ export default {
 }
 
 .login-logo {
-  width: 80px;
+  width: 150px;
   height: 80px;
   margin-bottom: 1rem;
 }
@@ -311,5 +318,34 @@ export default {
   background: #94a3b8;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Proudly South African Logo Section */
+.proudly-sa-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2rem 0 1rem 0;
+}
+
+.proudly-sa-logo {
+  height: 120px;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease;
+}
+
+.proudly-sa-logo:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 640px) {
+  .proudly-sa-section {
+    margin: 1.5rem 0 0.75rem 0;
+  }
+
+  .proudly-sa-logo {
+    height: 80px;
+  }
 }
 </style> 

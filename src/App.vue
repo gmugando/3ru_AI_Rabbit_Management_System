@@ -5,7 +5,6 @@
         <nav class="sidebar" :class="{ active: isSidebarOpen }">
           <div class="sidebar-header">
             <img src="@/assets/logo.png" alt="RMS Logo" class="logo">
-            <h2>3RU Rabbit Management System</h2>
             <button class="sidebar-close" @click="toggleSidebar">
               <i class="pi pi-times"></i>
             </button>
@@ -51,7 +50,7 @@
               <span class="menu-section-text">AI Chat</span>
               <router-link to="/farm-chat" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-comments"></i>
-                <span>Farm Chat</span>
+                <span>Talk To Your Farm</span>
               </router-link>
             </div>
             
@@ -100,6 +99,12 @@
               </router-link>
             </div>
           </div>
+          
+          <!-- Proudly South African Logo at bottom of sidebar -->
+          <div class="proudly-sa-sidebar">
+            <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo-sidebar">
+          </div>
+          
           <AppInfo class="sidebar-info" />
         </nav>
         <div class="main-content">
@@ -239,25 +244,17 @@ export default {
 
 .sidebar-header {
   display: flex;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   padding: 1rem 0;
   margin-bottom: 2rem;
   position: relative;
 }
 
-.sidebar-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #ffffff;
-  line-height: 1.2;
-  flex: 1;
-  min-width: 0;
-}
 
 .logo {
-  width: 40px;
-  height: 40px;
-  margin-right: 1rem;
+  width: 180px;
+  height: 80px;
   flex-shrink: 0;
 }
 
@@ -423,9 +420,13 @@ export default {
     display: block;
   }
 
-  .sidebar-header h2 {
-    font-size: 1rem;
-    margin-right: 2.5rem;
+  .logo {
+    width: 120px;
+    height: 55px;
+  }
+
+  .proudly-sa-logo-sidebar {
+    height: 35px;
   }
 }
 
@@ -443,8 +444,27 @@ export default {
   }
 }
 
-.sidebar-info {
+/* Proudly South African Logo in Sidebar */
+.proudly-sa-sidebar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
   margin-top: auto;
+}
+
+.proudly-sa-logo-sidebar {
+  height: 50px;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: transform 0.3s ease;
+}
+
+.proudly-sa-logo-sidebar:hover {
+  transform: scale(1.05);
+}
+
+.sidebar-info {
   padding: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
