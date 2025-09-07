@@ -1,0 +1,46 @@
+name: Deploy ACA RMS
+
+on:
+  push:
+    branches:
+      - feature/multi_tenant_aca 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout Code 🚚
+        uses: actions/checkout@v4
+        with: 
+             ref: feature/multi_tenant_aca 
+
+      - name: Install Dependencies 📦
+        run: npm install
+
+      - name: Build App 🏗️
+        run: npm run build
+        env:
+          VUE_APP_SUPABASE_URL: ${{ secrets.VUE_APP_SUPABASE_URL }}
+          VUE_APP_SUPABASE_ANON_KEY: ${{ secrets.VUE_APP_SUPABASE_ANON_KEY }}
+          VUE_APP_OPENAI_API_KEY: ${{ secrets.VUE_APP_OPENAI_API_KEY }}
+          VUE_APP_SITE_DOMAIN: ${{ secrets.VUE_ACA_APP_SITE_DOMAIN }}
+          VUE_APP_GA_TRACKING_ID: ${{ secrets.VUE_APP_GA_TRACKING_ID }}
+
+      - name: Upload to cPanel 📂
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.ACA_FTP_SERVER }}
+          username: ${{ secrets.ACA_FTP_USERNAME }}
+          password: ${{ secrets.ACA_FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: /public_html/
+          exclude: |
+            **/.git**
+            **/.git*/**
+            **/node_modules/**
+            **/.**
