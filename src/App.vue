@@ -256,6 +256,9 @@ export default {
   width: 180px;
   height: 80px;
   flex-shrink: 0;
+  background: white;
+  border-radius: 8px;
+  padding: 0.5rem;
 }
 
 .sidebar-menu {

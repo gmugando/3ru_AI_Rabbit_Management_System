@@ -5,7 +5,6 @@
       <nav class="nav-bar" :class="{ responsive: isNavOpen }" id="myTopnav">
         <div class="logo">
           <img src="@/assets/logo.png" alt="RMS Logo">
-          <span>3RU RMS</span>
         </div>
                  <div class="nav-links">
            <a href="#features" @click="closeNav">Features</a>
@@ -156,8 +155,8 @@
           <div class="pricing-header">
             <h3>Growth</h3>
             <div class="price">
-              <span class="currency">$</span>
-              <span class="amount">20</span>
+              <span class="currency">R</span>
+              <span class="amount">400</span>
               <span class="period">/month</span>
             </div>
           </div>
@@ -174,8 +173,8 @@
           <div class="pricing-header">
             <h3>Enterprise</h3>
             <div class="price">
-              <span class="currency">$</span>
-              <span class="amount">45</span>
+              <span class="currency">R</span>
+              <span class="amount">700</span>
               <span class="period">/month</span>
             </div>
           </div>
@@ -252,7 +251,12 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <p>&copy; 2025 3RU Rabbit Management System. All rights reserved.</p>
+        <p>&copy; 2025 Powered by 3RU Rabbit Management System. All rights reserved.</p>
+        
+        <!-- Proudly South African Logo -->
+        <div class="proudly-sa-footer">
+          <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo-footer">
+        </div>
       </div>
     </footer>
   </div>
@@ -381,14 +385,10 @@ export default {
 }
 
 .logo img {
-  height: 40px;
+  width: 180px;
+  height: 80px;
 }
 
-.logo span {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-}
 
 .nav-links {
   display: flex;
@@ -460,6 +460,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  padding-top: 2rem;
 }
 
 .hero h1 {
@@ -764,6 +765,27 @@ export default {
   color: #94a3b8;
 }
 
+/* Proudly South African Logo in Footer */
+.proudly-sa-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.proudly-sa-logo-footer {
+  height: 60px;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.proudly-sa-logo-footer:hover {
+  transform: scale(1.05);
+}
+
 /* Feature Slider */
 .feature-slider {
   background: rgba(255, 255, 255, 0.05);
@@ -996,6 +1018,10 @@ export default {
   .feature-slider {
     height: 250px;
     margin-top: 1rem;
+  }
+
+  .proudly-sa-logo-footer {
+    height: 45px;
   }
 }
 
