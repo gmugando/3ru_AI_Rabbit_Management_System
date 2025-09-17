@@ -27,8 +27,8 @@
             <a href="#features" class="btn-secondary">Learn More</a>
           </div>
           <div class="hero-images">
-            <img src="https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=500&q=80" alt="Modern Rabbit Farm" class="hero-image">
-            <img src="https://images.unsplash.com/photo-1452857297128-d9c29adba80b?auto=format&fit=crop&w=500&q=80" alt="Digital Rabbit Management" class="hero-image">
+            <img src="@/assets/rabbits-eating-01.jpg" alt="Rabbits Eating" class="hero-image">
+            <img src="@/assets/rabbits-eating-02.jpg" alt="Rabbits Feeding" class="hero-image">
           </div>
         </div>
         <div class="feature-slider">
@@ -492,7 +492,7 @@ export default {
 
 .hero-image {
   width: calc(50% - 0.5rem);
-  height: 120px;
+  height: 180px;
   object-fit: cover;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -1011,8 +1011,8 @@ export default {
   }
 
   .hero-image {
-    width: 140px;
-    height: 100px;
+    width: 180px;
+    height: 140px;
   }
 
   .feature-slider {
