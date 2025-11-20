@@ -66,7 +66,7 @@
             <div class="menu-section">
               <span class="menu-section-text">BUSINESS</span>
               <router-link to="/finance" class="menu-item" @click="closeSidebarOnMobile">
-                <i class="pi pi-dollar"></i>
+                <CurrencyIcon />
                 <span>Finance</span>
               </router-link>
               <router-link to="/schedule" class="menu-item" @click="closeSidebarOnMobile">
@@ -82,17 +82,29 @@
             <div class="menu-section">
               <span class="menu-section-text">ADMINISTRATION</span>
               <template v-if="userRole === 'SUPER_ADMIN'">
+                <router-link to="/users-overview" class="menu-item" @click="closeSidebarOnMobile">
+                  <i class="pi pi-id-card"></i>
+                  <span>Breeder Management</span>
+                </router-link>
+              </template>
+              <!-- Hidden: Tenants menu - functionality now in Breeder Management -->
+              <!--
+              <template v-if="userRole === 'SUPER_ADMIN'">
                 <router-link to="/tenants" class="menu-item" @click="closeSidebarOnMobile">
                   <i class="pi pi-building"></i>
                   <span>Tenants</span>
                 </router-link>
               </template>
+              -->
+              <!-- Hidden: Users menu - functionality now in Breeder Management -->
+              <!--
               <template v-if="userRole === 'TENANT_ADMIN' || userRole === 'SUPER_ADMIN'">
                 <router-link to="/users" class="menu-item" @click="closeSidebarOnMobile">
                   <i class="pi pi-users"></i>
                   <span>Users</span>
                 </router-link>
               </template>
+              -->
               <router-link to="/settings" class="menu-item" @click="closeSidebarOnMobile">
                 <i class="pi pi-cog"></i>
                 <span>Settings</span>
@@ -102,6 +114,7 @@
           
           <!-- Proudly South African Logo at bottom of sidebar -->
           <div class="proudly-sa-sidebar">
+            <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo-sidebar">
             <img src="@/assets/proudly-south-african-logo.png" alt="Proudly South African" class="proudly-sa-logo-sidebar">
           </div>
           
@@ -138,16 +151,19 @@
 </template>
 
 <script>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
 import AppInfo from '@/components/AppInfo.vue'
+// eslint-disable-next-line no-unused-vars
+import CurrencyIcon from '@/components/CurrencyIcon.vue'
 
 export default {
   name: 'App',
   components: {
-    AppInfo
+    AppInfo,
+    CurrencyIcon
   },
   setup() {
     const store = useStore()
@@ -158,6 +174,47 @@ export default {
     const userRole = computed(() => store.state.user?.role)
     const userName = computed(() => store.state.user?.name)
 
+    // Restore user session on app mount (fallback if router guard didn't catch it)
+    const restoreUserSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session && !store.state.user) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            // Get user profile and role from profiles table
+            const { data: profiles, error: profileError } = await supabase
+              .from('profiles')
+              .select(`
+                id,
+                first_name,
+                last_name,
+                organization,
+                role_id,
+                roles (
+                  name
+                )
+              `)
+              .eq('user_id', user.id)
+              .limit(1)
+
+            if (!profileError && profiles && profiles.length > 0) {
+              const profile = profiles[0]
+              // Restore user to store
+              store.commit('setUser', {
+                id: user.id,
+                email: user.email,
+                name: `${profile.first_name} ${profile.last_name}`,
+                role: profile.roles?.name || 'USER',
+                organization: profile.organization
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring user session in App.vue:', error)
+      }
+    }
+
     // Check if mobile on mount and resize
     const checkMobile = () => {
       isMobile.value = window.innerWidth <= 768
@@ -165,6 +222,11 @@ export default {
 
     // Initialize mobile check
     checkMobile()
+
+    // Restore user session on mount
+    onMounted(() => {
+      restoreUserSession()
+    })
 
     // Add resize listener
     window.addEventListener('resize', checkMobile)
@@ -307,6 +369,15 @@ export default {
   font-size: 1.25rem;
   width: 1.5rem;
   text-align: center;
+}
+
+.menu-item .currency-icon {
+  font-size: 1.25rem;
+  width: 1.5rem;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-item span {
@@ -452,6 +523,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 0.75rem;
   padding: 1rem;
   margin-top: auto;
 }

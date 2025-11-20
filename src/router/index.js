@@ -242,6 +242,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['SUPER_ADMIN', 'TENANT_ADMIN'] }
   },
   {
+    path: '/users-overview',
+    name: 'UsersOverview',
+    component: () => import('@/views/users/UsersOverview.vue'),
+    meta: { requiresAuth: true, roles: ['SUPER_ADMIN'] }
+  },
+  {
     path: '/tenants',
     name: 'Tenants',
     component: () => import('@/views/tenants/TenantManagement.vue'),
@@ -272,9 +278,50 @@ const router = createRouter({
   routes
 })
 
+// Import store to restore user on page refresh
+import store from '@/store'
+
 router.beforeEach(async (to, from, next) => {
   const { data: { session } } = await supabase.auth.getSession()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  // If there's a session but no user in store, restore the user
+  if (session && !store.state.user) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // Get user profile and role from profiles table
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            organization,
+            role_id,
+            roles (
+              name
+            )
+          `)
+          .eq('user_id', user.id)
+          .limit(1)
+
+        if (!profileError && profiles && profiles.length > 0) {
+          const profile = profiles[0]
+          // Restore user to store
+          store.commit('setUser', {
+            id: user.id,
+            email: user.email,
+            name: `${profile.first_name} ${profile.last_name}`,
+            role: profile.roles?.name || 'USER',
+            organization: profile.organization
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring user session:', error)
+    }
+  }
 
   if (requiresAuth && !session) {
     next('/login')

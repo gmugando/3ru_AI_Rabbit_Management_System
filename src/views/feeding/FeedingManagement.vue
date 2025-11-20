@@ -74,7 +74,7 @@
 
       <div class="stat-card">
         <div class="stat-icon cost-icon">
-          <i class="pi pi-dollar"></i>
+          <CurrencyIcon size="large" />
         </div>
         <div class="stat-content">
           <h3>Monthly Cost</h3>
@@ -235,11 +235,13 @@ import { ref, reactive, onMounted } from 'vue'
 import currencyService from '@/services/currency'
 import { supabase } from '@/supabase'
 import UpcomingEventsWidget from '@/components/UpcomingEventsWidget.vue'
+import CurrencyIcon from '@/components/CurrencyIcon.vue'
 
 export default {
   name: 'FeedingManagement',
   components: {
-    UpcomingEventsWidget
+    UpcomingEventsWidget,
+    CurrencyIcon
   },
   setup() {
     const monthlyCost = ref('$0')
@@ -842,6 +844,12 @@ export default {
 .stat-icon.cost-icon {
   background: #f0f9ff;
   color: #0369a1;
+}
+
+.stat-icon .currency-icon {
+  font-size: inherit;
+  width: auto;
+  height: auto;
 }
 
 .stat-content h3 {

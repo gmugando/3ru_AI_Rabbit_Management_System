@@ -25,7 +25,7 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon revenue">
-          <i class="pi pi-dollar"></i>
+          <CurrencyIcon size="large" />
         </div>
         <div class="stat-content">
           <h3>Total Revenue</h3>
@@ -352,9 +352,13 @@ import Chart from 'chart.js/auto'
 import { supabase } from '@/supabase'
 import currencyService from '@/services/currency'
 import { financialIntegration } from '@/services/financialIntegration'
+import CurrencyIcon from '@/components/CurrencyIcon.vue'
 
 export default {
   name: 'AppFinance',
+  components: {
+    CurrencyIcon
+  },
   setup() {
     const financeChart = ref(null)
     const recentTransactions = ref([])
