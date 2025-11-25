@@ -15,7 +15,7 @@ const config = {
   // Site Configuration
   site: {
     domain: process.env.VUE_APP_SITE_DOMAIN || 'https://3ru-rabbitry.co.za',
-    name: '3RU RMS',
+    name: 'Rabbitry Academy RMS',
     description: 'AI-Powered Rabbit Management System'
   },
 

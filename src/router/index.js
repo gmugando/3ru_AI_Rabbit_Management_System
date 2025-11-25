@@ -248,6 +248,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['SUPER_ADMIN'] }
   },
   {
+    path: '/pricing-management',
+    name: 'PricingManagement',
+    component: () => import('@/views/pricing/PricingManagement.vue'),
+    meta: { requiresAuth: true, roles: ['SUPER_ADMIN'] }
+  },
+  {
     path: '/tenants',
     name: 'Tenants',
     component: () => import('@/views/tenants/TenantManagement.vue'),

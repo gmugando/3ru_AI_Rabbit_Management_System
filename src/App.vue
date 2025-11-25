@@ -86,6 +86,10 @@
                   <i class="pi pi-id-card"></i>
                   <span>Breeder Management</span>
                 </router-link>
+                <router-link to="/pricing-management" class="menu-item" @click="closeSidebarOnMobile">
+                  <i class="pi pi-tag"></i>
+                  <span>Pricing Management</span>
+                </router-link>
               </template>
               <!-- Hidden: Tenants menu - functionality now in Breeder Management -->
               <!--

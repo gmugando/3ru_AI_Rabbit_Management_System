@@ -134,73 +134,39 @@
         <p>Choose the plan that fits your farm size</p>
       </div>
       <div class="pricing-grid">
-        <div class="pricing-card">
+        <div 
+          v-for="(plan, index) in pricingPlans" 
+          :key="index"
+          :class="['pricing-card', { 'popular': plan.is_popular, 'custom': plan.is_custom }]"
+        >
+          <div v-if="plan.is_popular" class="popular-badge">Most Popular</div>
           <div class="pricing-header">
-            <h3>Starter</h3>
+            <h3>{{ plan.name }}</h3>
             <div class="price">
-              <span class="amount">Free</span>
-              <span class="period">/month</span>
+              <span v-if="plan.currency" class="currency">{{ plan.currency }}</span>
+              <span class="amount">{{ plan.price }}</span>
+              <span v-if="plan.period" class="period">{{ plan.period }}</span>
             </div>
           </div>
           <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> Up to 5 rabbits</li>
-            <li><i class="pi pi-check"></i> Basic features included</li>
-            <li><i class="pi pi-check"></i> Community support</li>
+            <li v-for="(feature, idx) in plan.features" :key="idx">
+              <i class="pi pi-check"></i> {{ feature }}
+            </li>
           </ul>
-          <router-link to="/register" class="btn-primary">Get Started</router-link>
-        </div>
-
-        <div class="pricing-card popular">
-          <div class="popular-badge">Most Popular</div>
-          <div class="pricing-header">
-            <h3>Growth</h3>
-            <div class="price">
-              <span class="currency">R</span>
-              <span class="amount">400</span>
-              <span class="period">/month</span>
-            </div>
-          </div>
-          <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> 5-100 rabbits</li>
-            <li><i class="pi pi-check"></i> All features included</li>
-            <li><i class="pi pi-check"></i> Priority support</li>
-            <li><i class="pi pi-check"></i> Advanced reporting</li>
-          </ul>
-          <router-link to="/register" class="btn-primary">Get Started</router-link>
-        </div>
-
-        <div class="pricing-card">
-          <div class="pricing-header">
-            <h3>Enterprise</h3>
-            <div class="price">
-              <span class="currency">R</span>
-              <span class="amount">700</span>
-              <span class="period">/month</span>
-            </div>
-          </div>
-          <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> 100-500 rabbits</li>
-            <li><i class="pi pi-check"></i> All features included</li>
-            <li><i class="pi pi-check"></i> 24/7 support</li>
-            <li><i class="pi pi-check"></i> Custom solutions</li>
-          </ul>
-          <router-link to="/register" class="btn-primary">Get Started</router-link>
-        </div>
-
-        <div class="pricing-card custom">
-          <div class="pricing-header">
-            <h3>Custom</h3>
-            <div class="price">
-              <span class="amount">Contact Us</span>
-            </div>
-          </div>
-          <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> 500+ rabbits</li>
-            <li><i class="pi pi-check"></i> Custom features</li>
-            <li><i class="pi pi-check"></i> Dedicated support</li>
-            <li><i class="pi pi-check"></i> Custom integration</li>
-          </ul>
-          <a href="mailto:contact@3ru-rms.com" class="btn-secondary">Contact Sales</a>
+          <router-link 
+            v-if="plan.button_link.startsWith('/')" 
+            :to="plan.button_link" 
+            :class="plan.button_class"
+          >
+            {{ plan.button_text }}
+          </router-link>
+          <a 
+            v-else 
+            :href="plan.button_link" 
+            :class="plan.button_class"
+          >
+            {{ plan.button_text }}
+          </a>
         </div>
       </div>
     </section>
@@ -234,7 +200,7 @@
     <footer class="footer">
       <div class="footer-content">
         <div class="footer-section">
-          <h4>About 3RU RMS</h4>
+          <h4>About Rabbitry Academy RMS</h4>
           <p>A comprehensive rabbit management system designed for modern farming needs.</p>
         </div>
         <div class="footer-section">
@@ -264,6 +230,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { supabase } from '@/supabase'
 import seoService from '@/services/seo'
 import { getFullUrl, getEmailDomain } from '@/utils/config'
 
@@ -273,6 +240,112 @@ export default {
     const currentSlide = ref(1)
     const isNavOpen = ref(false)
     let slideshowInterval = null
+
+    // Pricing plans data - fetched from database
+    const pricingPlans = ref([])
+
+    // Fallback pricing plans in case database fetch fails
+    const fallbackPricingPlans = [
+      {
+        name: 'Starter',
+        description: 'Perfect for small farms',
+        price: 'Free',
+        currency: '',
+        period: '/month',
+        rabbits: 5,
+        features: [
+          'Up to 5 rabbits',
+          'Basic features included',
+          'Community support'
+        ],
+        is_popular: false,
+        is_custom: false,
+        button_text: 'Get Started',
+        button_link: '/register',
+        button_class: 'btn-primary'
+      },
+      {
+        name: 'Growth',
+        description: 'For growing farms',
+        price: '40',
+        currency: 'R',
+        period: '/month',
+        rabbits: 100,
+        features: [
+          '5-100 rabbits',
+          'All features included',
+          'Priority support',
+          'Advanced reporting'
+        ],
+        is_popular: true,
+        is_custom: false,
+        button_text: 'Get Started',
+        button_link: '/register',
+        button_class: 'btn-primary'
+      },
+      {
+        name: 'Enterprise',
+        description: 'For large-scale operations',
+        price: '70',
+        currency: 'R',
+        period: '/month',
+        rabbits: 500,
+        features: [
+          '100-500 rabbits',
+          'All features included',
+          '24/7 support',
+          'Custom solutions'
+        ],
+        is_popular: false,
+        is_custom: false,
+        button_text: 'Get Started',
+        button_link: '/register',
+        button_class: 'btn-primary'
+      },
+      {
+        name: 'Custom',
+        description: 'Tailored to your needs',
+        price: 'Contact Us',
+        currency: '',
+        period: '',
+        rabbits: 999999,
+        features: [
+          '500+ rabbits',
+          'Custom features',
+          'Dedicated support',
+          'Custom integration'
+        ],
+        is_popular: false,
+        is_custom: true,
+        button_text: 'Contact Sales',
+        button_link: 'mailto:support@rabbitryacademy-rms.co.za',
+        button_class: 'btn-secondary'
+      }
+    ]
+
+    // Fetch pricing plans from database
+    const fetchPricingPlans = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('pricing_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+
+        if (error) {
+          console.error('Error fetching pricing plans:', error)
+          pricingPlans.value = fallbackPricingPlans
+        } else if (data && data.length > 0) {
+          pricingPlans.value = data
+        } else {
+          // No plans in database, use fallback
+          pricingPlans.value = fallbackPricingPlans
+        }
+      } catch (err) {
+        console.error('Error fetching pricing plans:', err)
+        pricingPlans.value = fallbackPricingPlans
+      }
+    }
 
     const toggleNav = () => {
       console.log('Toggle nav clicked, current state:', isNavOpen.value)
@@ -310,9 +383,12 @@ export default {
       startSlideshow()
       window.addEventListener('resize', closeNavOnResize)
       
+      // Fetch pricing plans from database
+      fetchPricingPlans()
+      
       // Set SEO meta tags directly using the service
       seoService.updateMetaTags({
-        title: '3RU RMS - AI-Powered Rabbit Management System',
+        title: 'Rabbitry Academy - AI-Powered Rabbit Management System',
         description: 'Revolutionize your rabbit farming with artificial intelligence. Comprehensive features for breeding, health monitoring, and farm management.',
         keywords: 'rabbit management, rabbit farming, AI farming, breeding management, rabbit health, farm automation, livestock management',
         url: getFullUrl(window.location.pathname)
@@ -352,7 +428,8 @@ export default {
       isNavOpen,
       toggleNav,
       closeNav,
-      getEmailDomain
+      getEmailDomain,
+      pricingPlans
     }
   }
 }

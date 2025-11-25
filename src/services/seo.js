@@ -7,10 +7,10 @@ class SEOService {
     const domain = getDomain()
     
     this.defaultMeta = {
-      title: '3RU RMS - AI-Powered Rabbit Management System',
+      title: 'Rabbitry Academy - AI-Powered Rabbit Management System',
       description: 'Revolutionize your rabbit farming with artificial intelligence. Comprehensive features for breeding, health monitoring, and farm management.',
       keywords: 'rabbit management, rabbit farming, AI farming, breeding management, rabbit health, farm automation, livestock management',
-      image: getFullUrl('/og-image.jpg'),
+      image: getFullUrl('/og-image.png'),
       url: getFullUrl('/')
     }
     
@@ -90,7 +90,7 @@ class SEOService {
     const orgData = {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "3RU RMS",
+      "name": "Rabbitry Academy RMS",
       "url": getFullUrl('/'),
       "logo": getFullUrl('/logo.png'),
       "description": "AI-Powered Rabbit Management System",
@@ -114,14 +114,14 @@ class SEOService {
     const softwareData = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "3RU RMS",
+      "name": "Rabbitry Academy RMS",
       "description": "AI-Powered Rabbit Management System for modern farming",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web Browser",
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "R"
       },
       "featureList": [
         "AI-Driven Breeding Recommendations",
@@ -207,7 +207,7 @@ class SEOService {
     this.updateMetaTag('og:image', socialData.image)
     this.updateMetaTag('og:url', socialData.url)
     this.updateMetaTag('og:type', 'website')
-    this.updateMetaTag('og:site_name', '3RU RMS')
+    this.updateMetaTag('og:site_name', 'Rabbitry Academy RMS')
 
     // Twitter
     this.updateMetaTag('twitter:card', 'summary_large_image')
