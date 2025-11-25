@@ -70,6 +70,7 @@ import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
 import AppInfo from '@/components/AppInfo.vue'
+import sessionLogger from '@/services/sessionLogger'
 
 export default {
   name: 'AppLogin',
@@ -134,6 +135,12 @@ export default {
           name: `${profile.first_name} ${profile.last_name}`,
           role: profile.roles.name,
           organization: profile.organization
+        })
+
+        // Log the session (non-blocking)
+        const { data: { session } } = await supabase.auth.getSession()
+        sessionLogger.logSession(user, session?.access_token).catch(err => {
+          console.error('Failed to log session:', err)
         })
 
         router.push('/dashboard')

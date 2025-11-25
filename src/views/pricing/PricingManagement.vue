@@ -3,12 +3,16 @@
     <div class="page-header">
       <div>
         <h1>Pricing Management</h1>
-        <p class="subtitle">Manage pricing plans for the landing page</p>
+        <p class="subtitle">Manage your pricing plan for the landing page</p>
       </div>
       <div class="header-actions">
-        <button class="btn-primary" @click="openAddModal">
+        <button 
+          v-if="pricingPlans.length === 0" 
+          class="btn-primary" 
+          @click="openAddModal"
+        >
           <i class="pi pi-plus"></i>
-          Add New Plan
+          Add Pricing Plan
         </button>
         <button class="refresh-button" @click="fetchPricingPlans" :disabled="isLoading">
           <i class="pi pi-refresh" :class="{ 'pi-spin': isLoading }"></i>
@@ -25,15 +29,16 @@
     <div class="content-card">
       <div v-if="isLoading" class="loading-state">
         <i class="pi pi-spin pi-spinner"></i>
-        <span>Loading pricing plans...</span>
+        <span>Loading pricing plan...</span>
       </div>
 
       <div v-else-if="pricingPlans.length === 0" class="empty-state">
         <i class="pi pi-tag"></i>
-        <p>No pricing plans found</p>
+        <p>No pricing plan configured</p>
+        <p class="empty-hint">Add your pricing plan to display on the landing page</p>
         <button class="btn-primary" @click="openAddModal">
           <i class="pi pi-plus"></i>
-          Add First Plan
+          Add Pricing Plan
         </button>
       </div>
 
@@ -43,7 +48,6 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Order</th>
                 <th>Name</th>
                 <th>Description</th>
                 <th>Price</th>
@@ -55,7 +59,6 @@
             </thead>
             <tbody>
               <tr v-for="plan in sortedPricingPlans" :key="plan.id">
-                <td>{{ plan.display_order }}</td>
                 <td>
                   <strong>{{ plan.name }}</strong>
                   <div class="badges">
@@ -140,10 +143,6 @@
                 <label>Number of Rabbits *</label>
                 <input v-model.number="formData.rabbits" type="number" required class="form-control" placeholder="e.g., 5" />
               </div>
-              <div class="form-group">
-                <label>Display Order</label>
-                <input v-model.number="formData.display_order" type="number" class="form-control" placeholder="e.g., 1" />
-              </div>
             </div>
 
             <div class="form-group">
@@ -207,8 +206,8 @@
         </div>
         
         <div class="modal-body">
-          <p>Are you sure you want to delete the <strong>{{ planToDelete?.name }}</strong> plan?</p>
-          <p class="warning-text">This action cannot be undone.</p>
+          <p>Are you sure you want to delete the <strong>{{ planToDelete?.name }}</strong> pricing plan?</p>
+          <p class="warning-text">This will remove the pricing information from your landing page until you add a new plan.</p>
         </div>
 
         <div class="modal-footer">
@@ -285,6 +284,12 @@ export default {
     }
 
     const openAddModal = () => {
+      // Prevent adding if a plan already exists
+      if (pricingPlans.value.length > 0) {
+        error.value = 'Only one pricing plan is allowed. Please edit or delete the existing plan.'
+        return
+      }
+      
       isEditMode.value = false
       formData.value = {
         id: null,
@@ -301,7 +306,7 @@ export default {
         button_text: 'Get Started',
         button_link: '/register',
         button_class: 'btn-primary',
-        display_order: pricingPlans.value.length + 1
+        display_order: 1
       }
       featuresText.value = ''
       showModal.value = true
@@ -588,6 +593,12 @@ export default {
 .empty-state i {
   font-size: 3rem;
   color: #cbd5e1;
+}
+
+.empty-hint {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-top: -0.5rem;
 }
 
 .table-container {

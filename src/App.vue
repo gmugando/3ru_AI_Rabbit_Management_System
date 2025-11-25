@@ -162,6 +162,7 @@ import { supabase } from '@/supabase'
 import AppInfo from '@/components/AppInfo.vue'
 // eslint-disable-next-line no-unused-vars
 import CurrencyIcon from '@/components/CurrencyIcon.vue'
+import sessionLogger from '@/services/sessionLogger'
 
 export default {
   name: 'App',
@@ -253,6 +254,9 @@ export default {
 
     const logout = async () => {
       try {
+        // Log the logout event before signing out
+        await sessionLogger.logLogout()
+        
         // Sign out from Supabase
         await supabase.auth.signOut()
         
