@@ -546,6 +546,8 @@ export default {
 
 .input-with-icon {
   position: relative;
+  display: block;
+  width: 100%;
 }
 
 .input-icon {
@@ -554,9 +556,12 @@ export default {
   top: 50%;
   transform: translateY(-50%);
   color: #64748b;
+  pointer-events: none;
+  font-size: 0.875rem;
 }
 
 .input-with-icon .form-control {
+  width: 100%;
   padding-right: 3rem;
 }
 
