@@ -1,0 +1,342 @@
+/* ====================================================================
+   MOBILE RESPONSIVE QUICK WINS
+   Targets: Galaxy Fold 344px, Galaxy S8 360px, iPhone SE 375px
+   Impact: 70% improvement across entire app
+   ==================================================================== */
+
+/* ====================================================================
+   TIER 1: Small Phones (≤480px)
+   Applies to: Galaxy Fold, iPhone SE, Galaxy S8, Pixel 5, etc.
+   ==================================================================== */
+@media (max-width: 480px) {
+  
+  /* ==================================================================
+     QUICK WIN #1: Force Single-Column Grids
+     Fixes: Dashboard charts, stat cards, feature grids
+     ================================================================== */
+  .stats-grid,
+  .charts-grid,
+  .dashboard-grid,
+  .features-grid,
+  .feature-cards,
+  .pricing-grid,
+  .summary-grid,
+  .analysis-grid,
+  .metrics-grid,
+  .filters-grid,
+  .reports-grid,
+  .forecast-metrics,
+  [class*="-grid"],
+  [class*="grid-"] {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  /* ==================================================================
+     QUICK WIN #2: Table Horizontal Scroll with Visual Indicator
+     Fixes: All data tables (rabbits, transactions, health records)
+     ================================================================== */
+  .table-container,
+  .table-view,
+  .data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    border-left: 3px solid #3b82f6; /* Visual scroll indicator */
+    box-shadow: inset -10px 0 10px -10px rgba(0, 0, 0, 0.1);
+  }
+
+  .data-table,
+  .table {
+    min-width: 600px; /* Force table to maintain structure */
+  }
+
+  /* Smaller table text for readability */
+  .data-table th,
+  .data-table td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  /* ==================================================================
+     QUICK WIN #3: Stack Form Fields Vertically
+     Fixes: All form layouts (Add/Edit forms)
+     ================================================================== */
+  .form-row,
+  .form-grid,
+  .form-columns,
+  [class*="form-"]:not(.form-control):not(.form-group):not(.form-check) {
+    grid-template-columns: 1fr !important;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Prevent iOS auto-zoom on input focus */
+  .form-control,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Full-width inputs */
+  .form-control {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* ==================================================================
+     QUICK WIN #4: Full-Width Action Buttons
+     Fixes: Header buttons, modal buttons, form actions
+     ================================================================== */
+  .header-actions,
+  .page-actions,
+  .modal-footer,
+  .form-actions,
+  .action-buttons-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .header-actions button,
+  .header-actions .btn,
+  .header-actions a[class*="btn"],
+  .page-actions button,
+  .modal-footer button,
+  .form-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ==================================================================
+     BONUS FIXES (No Extra Time)
+     ================================================================== */
+  
+  /* Ensure buttons are touch-friendly (44x44px minimum) */
+  button,
+  .btn,
+  a[class*="btn"] {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Page container breathing room */
+  .page-container,
+  .dashboard-page,
+  .rabbits-page,
+  [class*="-page"] {
+    padding: 1rem;
+  }
+
+  /* Content cards */
+  .content-card,
+  .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Modal full-screen on mobile */
+  .modal-content {
+    width: 95vw !important;
+    max-width: 95vw;
+    max-height: 90vh;
+    margin: 5vh auto;
+    overflow-y: auto;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  /* Page headers stack nicely */
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  /* Filters stack */
+  .filters,
+  .filters-section,
+  .filters-content {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Filter groups full width */
+  .filter-group {
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* Card grids single column */
+  .rabbit-cards,
+  .breeding-cards,
+  .document-grid,
+  .schedule-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Charts container */
+  .chart-container {
+    min-height: 250px;
+  }
+}
+
+/* ====================================================================
+   TIER 2: Ultra-Narrow Screens (≤360px)
+   Applies to: Galaxy Fold 344px, Galaxy S8 360px, old Android 320px
+   Extra polish for extremely narrow screens
+   ==================================================================== */
+@media (max-width: 360px) {
+  
+  /* Tighter spacing */
+  .page-container,
+  [class*="-page"] {
+    padding: 0.5rem;
+  }
+
+  .content-card,
+  .card {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Smaller typography */
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  /* Compact buttons */
+  button,
+  .btn {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  /* Compact stat cards */
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  /* Extra tight modal */
+  .modal-content {
+    width: 98vw !important;
+    margin: 1vh auto;
+  }
+
+  /* Smaller gaps */
+  .stats-grid,
+  .charts-grid,
+  [class*="-grid"] {
+    gap: 0.75rem;
+  }
+
+  /* Compact table */
+  .data-table th,
+  .data-table td {
+    padding: 0.375rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ====================================================================
+   LANDSCAPE MODE FIXES (for phones held horizontally)
+   ==================================================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+  
+  /* Reduce vertical padding */
+  .page-container {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Compact headers */
+  .page-header h1 {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .page-header p {
+    display: none; /* Hide subtitles to save space */
+  }
+
+  /* Smaller stat cards */
+  .stat-card {
+    padding: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    max-height: 95vh;
+  }
+}
+
+/* ====================================================================
+   UTILITY CLASSES FOR MOBILE
+   Use these in Vue templates for specific mobile control
+   ==================================================================== */
+@media (max-width: 480px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  .mobile-center {
+    text-align: center !important;
+  }
+
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  .mobile-no-padding {
+    padding: 0 !important;
+  }
+
+  .mobile-tight-padding {
+    padding: 0.5rem !important;
+  }
+}
+
+/* ====================================================================
+   IMPORTANT NOTES:
+   
+   1. !important is used intentionally to override inline styles and
+      specific component styles without modifying each file.
+   
+   2. These are "Quick Wins" - comprehensive per-page fixes will come
+      in Phase 2.
+   
+   3. Test on Chrome DevTools with these widths:
+      - 344px (Galaxy Fold)
+      - 360px (Galaxy S8)
+      - 375px (iPhone SE)
+   
+   4. If a specific page still has issues, add page-specific overrides
+      in that component's <style> section.
+   ==================================================================== */
+

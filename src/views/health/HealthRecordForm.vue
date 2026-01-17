@@ -1154,4 +1154,102 @@ export default {
     width: 100%;
   }
 }
+
+/* Mobile fixes for small screens */
+@media (max-width: 480px) {
+  .health-record-form {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .back-button {
+    align-self: flex-start;
+  }
+
+  /* Form sections */
+  .form-section {
+    padding: 1rem;
+  }
+
+  .form-section h2 {
+    font-size: 1.125rem;
+  }
+
+  /* Ensure all form rows single column */
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+
+  /* Form inputs */
+  .form-control,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevent iOS zoom */
+    width: 100%;
+  }
+
+  /* Touch-friendly buttons */
+  button,
+  .btn {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  /* Form actions */
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  /* Sidebar cards stack */
+  .sidebar-card {
+    margin-bottom: 1rem;
+  }
+
+  /* Help text more compact */
+  .help-text {
+    font-size: 0.8125rem;
+  }
+
+  /* Radio/checkbox groups */
+  .radio-group,
+  .checkbox-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* Ultra-narrow screens */
+@media (max-width: 360px) {
+  .health-record-form {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .form-section {
+    padding: 0.75rem;
+  }
+
+  .form-section h2 {
+    font-size: 1rem;
+  }
+
+  .form-control {
+    padding: 0.625rem;
+  }
+}
+
 </style>

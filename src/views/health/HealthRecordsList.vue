@@ -1602,4 +1602,118 @@ export default {
     border-bottom: none;
   }
 }
+
+/* Mobile fixes for small screens */
+@media (max-width: 480px) {
+  .health-records-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions button {
+    width: 100%;
+  }
+
+  /* Filters */
+  .filters-content {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  /* Results summary */
+  .results-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  /* Table improvements */
+  .health-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-header-row,
+  .table-row {
+    min-width: 600px; /* Maintain structure when scrolling */
+  }
+
+  /* Modal full screen */
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal-content {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 1rem;
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+
+  /* Detail grid single column */
+  .detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Pagination */
+  .pagination-info {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .pagination-controls {
+    justify-content: center;
+  }
+}
+
+/* Ultra-narrow screens */
+@media (max-width: 360px) {
+  .health-records-page {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .table-row {
+    padding: 0.75rem;
+  }
+
+  .table-cell {
+    font-size: 0.875rem;
+  }
+}
 </style>

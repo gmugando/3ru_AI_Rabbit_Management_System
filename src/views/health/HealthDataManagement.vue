@@ -724,6 +724,14 @@ export default {
   gap: 1rem;
 }
 
+/* Override immediately at mobile width */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+  }
+}
+
 .stat-card {
   display: flex;
   gap: 1rem;
@@ -838,6 +846,14 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
+}
+
+/* Override immediately at mobile width */
+@media (max-width: 480px) {
+  .treatment-details {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+  }
 }
 
 .treatment-details label {
@@ -1026,9 +1042,178 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 768px) {
+/* Tablet only - not for small phones */
+@media (min-width: 481px) and (max-width: 768px) {
   .treatment-details {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile fixes for small screens - IMPORTANT: These must override desktop styles */
+@media screen and (max-width: 480px) {
+  /* Diagnostic: Add subtle indicator when mobile styles are active */
+  .health-data-page::before {
+    content: "📱 Mobile Mode Active";
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    z-index: 9999;
+    opacity: 0.7;
+  }
+
+  /* Force mobile layout - LOCK DOWN the page */
+  .health-data-page,
+  div.health-data-page,
+  body .health-data-page {
+    padding: 1rem !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Prevent ANY child from expanding beyond viewport */
+  .health-data-page *,
+  .health-data-page * > * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Lock down content cards */
+  .health-data-page .content-card,
+  .content-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .page-header {
+    flex-direction: column !important;
+    gap: 1rem;
+  }
+
+  .header-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .header-actions button {
+    width: 100% !important;
+  }
+
+  /* Stats grid - NUCLEAR OPTION: Force single column no matter what */
+  .health-data-page .stats-grid,
+  .content-card .stats-grid,
+  div.stats-grid,
+  .stats-grid,
+  [class*="stats-grid"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    grid-auto-columns: 1fr !important;
+    grid-auto-flow: row !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Force stat cards to take full width */
+  .stats-grid > .stat-card,
+  .stats-grid > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Filters stack vertically */
+  .filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* Treatment details - NUCLEAR OPTION: Force single column no matter what */
+  .health-data-page .treatment-details,
+  .treatments-list .treatment-details,
+  .treatment-item .treatment-details,
+  div.treatment-details,
+  .treatment-details,
+  [class*="treatment-details"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    grid-auto-columns: 1fr !important;
+    grid-auto-flow: row !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Force treatment detail items to take full width */
+  .treatment-details > div,
+  .treatment-details > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Treatment header stack on very small screens */
+  .treatment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Stat cards more compact */
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* Ultra-narrow screens */
+@media (max-width: 360px) {
+  .health-data-page {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .stat-card {
+    padding: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
   }
 }
 </style> 
