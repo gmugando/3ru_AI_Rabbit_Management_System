@@ -9,7 +9,8 @@ class RouterAgent {
     this.availableAgents = {
       'sql': 'Database queries about rabbits, breeding plans, transactions, feeding schedules, transfers',
       'pdf': 'Document analysis, manual reading, research questions about rabbit care best practices', 
-      'weather': 'Weather conditions, temperature forecasts, climate impact analysis'
+      'weather': 'Weather conditions, temperature forecasts, climate impact analysis',
+      'vision': 'Camera vision events, motion detection, isolation alerts, abnormal posture, fur loss, nest risks'
     };
   }
 
@@ -24,6 +25,7 @@ AVAILABLE AGENTS:
 - sql: Database queries about rabbits, breeding plans, transactions, feeding schedules, transfers
 - pdf: Document analysis, manual reading, research questions about rabbit care best practices
 - weather: Weather conditions, temperature forecasts, climate impact analysis
+- vision: Camera vision events, motion detection, isolation alerts, abnormal posture, fur loss, nest risks
 
 RULES:
 1. Return a JSON array of agent names that should process the query
@@ -31,7 +33,8 @@ RULES:
 3. Always include 'sql' for any database-related questions
 4. Include 'weather' when weather/climate information is requested
 5. Include 'pdf' when asking about best practices, guidelines, or research
-6. Return agents in order of execution priority (dependencies first)
+6. Include 'vision' for camera monitoring, behavior alerts, movement/activity analysis, posture, fur loss, nest risks
+7. Return agents in order of execution priority (dependencies first)
 
 EXAMPLES:
 "Show me breeding plans for next month" → ["sql"]
@@ -42,11 +45,14 @@ EXAMPLES:
 "Which does are expected to kindle next month? For each one, list the expected kindle date and the forecasted temperature on that date" → ["sql", "weather"]
 "Show me this week's feeding schedule and weather forecast" → ["sql", "weather"]
 "How many rabbits do we have and what does the manual say about optimal population size?" → ["sql", "pdf"]
+"Show me critical camera alerts from today" → ["vision"]
+"Which rabbits have reduced movement and what are their latest health records?" → ["sql", "vision"]
+"Any nest risks from cameras and weather stress this week?" → ["vision", "weather"]
 
 IMPORTANT: 
 - Always return valid JSON array format: ["agent1", "agent2"]
-- Only use agent names from the available list: sql, pdf, weather
-- Consider data dependencies (sql data often needed before weather for specific dates)`;
+- Only use agent names from the available list: sql, pdf, weather, vision
+- Consider data dependencies (sql data often needed before weather for specific dates and for rabbit-specific vision context)`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -111,6 +117,18 @@ IMPORTANT:
     }
     if (lowerText.includes('weather') || lowerText.includes('climate') || lowerText.includes('forecast')) {
       agents.push('weather');
+    }
+    if (
+      lowerText.includes('vision') ||
+      lowerText.includes('camera') ||
+      lowerText.includes('motion') ||
+      lowerText.includes('activity') ||
+      lowerText.includes('posture') ||
+      lowerText.includes('fur') ||
+      lowerText.includes('isolation') ||
+      lowerText.includes('nest')
+    ) {
+      agents.push('vision');
     }
     
     return agents.length > 0 ? agents : ['sql'];

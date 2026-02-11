@@ -141,6 +141,29 @@
         </div>
       </div>
 
+      <!-- Vision Display (for vision-only or combined queries) -->
+      <div v-if="currentResult.success && (currentResult.visionSummary || (currentResult.visionAlerts && currentResult.visionAlerts.length))" class="vision-display">
+        <h4><i class="pi pi-video"></i> Vision Monitoring Insights</h4>
+
+        <div v-if="currentResult.visionSummary" class="vision-summary">
+          {{ currentResult.visionSummary }}
+        </div>
+
+        <div v-if="currentResult.visionAlerts && currentResult.visionAlerts.length" class="vision-alerts">
+          <h5><i class="pi pi-exclamation-triangle"></i> Top Alerts</h5>
+          <ul class="vision-alert-list">
+            <li v-for="alert in currentResult.visionAlerts.slice(0, 5)" :key="alert.id || `${alert.event_type}-${alert.event_time}`">
+              <span class="alert-badge" :class="`severity-${alert.severity}`">{{ alert.severity }}</span>
+              <span class="alert-event">{{ (alert.event_type || '').replace(/_/g, ' ') }}</span>
+              <span class="alert-confidence">{{ Math.round((alert.confidence || 0) * 100) }}%</span>
+              <span class="alert-context" v-if="alert.rabbit_id || alert.cage_id">
+                {{ alert.rabbit_id ? `Rabbit: ${alert.rabbit_id}` : `Cage: ${alert.cage_id}` }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Error Display -->
       <div v-if="!currentResult.success" class="error-display">
         <p><strong>Error:</strong> {{ currentResult.error }}</p>
@@ -320,7 +343,9 @@ export default {
         "Is it too hot for my rabbits today?",
         "Will it rain tomorrow?",
         "What does the rabbit care manual say about housing?",
-        "Compare our breeding rates with industry standards"
+        "Compare our breeding rates with industry standards",
+        "Show me critical vision alerts from today",
+        "Any reduced movement or posture issues from camera monitoring?"
       ]
     }
   },
@@ -443,8 +468,10 @@ export default {
         'sql_only': 'Database Query',
         'pdf_only': 'Document Analysis',
         'weather_only': 'Weather Analysis',
+        'vision_only': 'Vision Monitoring',
         'sql_pdf': 'Database + Document Analysis',
         'sql_weather': 'Database + Weather Analysis',
+        'sql_vision': 'Database + Vision Monitoring',
         'unclear': 'Auto-Routed'
       }
       return typeMap[queryType] || queryType
@@ -454,7 +481,8 @@ export default {
       const agentMap = {
         'sql': 'Database',
         'pdf': 'Documents', 
-        'weather': 'Weather'
+        'weather': 'Weather',
+        'vision': 'Vision'
       }
       return agentMap[agentName] || agentName.charAt(0).toUpperCase() + agentName.slice(1)
     },
@@ -1143,6 +1171,12 @@ export default {
   margin-right: 8px;
 }
 
+.agent-badge.vision_agent {
+  background: #fee2e2;
+  color: #b91c1c;
+  margin-right: 8px;
+}
+
 .pdf-insights {
   background: #f8fafc;
   border-left: 4px solid #7c3aed;
@@ -1319,6 +1353,98 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Vision Display Styles */
+.vision-display {
+  background: #fff7ed;
+  border-left: 4px solid #ea580c;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.vision-display h4 {
+  margin: 0 0 14px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vision-summary {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 14px;
+  color: #374151;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.vision-alerts h5 {
+  margin: 0 0 10px 0;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vision-alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.vision-alert-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+}
+
+.alert-badge {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.alert-badge.severity-low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.alert-badge.severity-medium {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.alert-badge.severity-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.alert-badge.severity-critical {
+  background: #7f1d1d;
+  color: #ffffff;
+}
+
+.alert-event {
+  font-weight: 600;
+  color: #111827;
+}
+
+.alert-confidence,
+.alert-context {
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .forecast-grid {

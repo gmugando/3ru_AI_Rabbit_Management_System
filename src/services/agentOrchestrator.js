@@ -2,6 +2,7 @@ import RouterAgent from './agents/routerAgent.js';
 import SqlAgent from './agents/sqlAgent.js';
 import PdfAgent from './agents/pdfAgent.js';
 import WeatherAgent from './agents/weatherAgent.js';
+import VisionAgent from './agents/visionAgent.js';
 import { createClient } from '@supabase/supabase-js';
 
 // Shared Context for agent communication
@@ -72,6 +73,7 @@ class FarmManagementOrchestrator {
     
     // Initialize weather agent with default preferences (will be updated when user preferences are loaded)
     this.registerAgent('weather', new WeatherAgent(openaiApiKey, weatherApiKey, defaultLocation, null));
+    this.registerAgent('vision', new VisionAgent(openaiApiKey, supabaseUrl, supabaseKey));
     
     // Shared context for agent communication
     this.context = new AgentContext();
@@ -79,6 +81,7 @@ class FarmManagementOrchestrator {
     // Agent dependencies - which agents need data from other agents
     this.agentDependencies = {
       'weather': ['sql'], // Weather agent can use SQL results for date-specific forecasts
+      'vision': ['sql'], // Vision can use SQL results to focus by rabbit/cage context
       'pdf': [] // PDF agent is independent
     };
   }
@@ -291,6 +294,11 @@ class FarmManagementOrchestrator {
     if (agentName === 'weather' && previousResults.has('sql')) {
       return this.enhanceWeatherQueryWithSqlContext(originalQuery);
     }
+
+    // Special handling for vision agent that depends on SQL
+    if (agentName === 'vision' && previousResults.has('sql')) {
+      return this.enhanceVisionQueryWithSqlContext(originalQuery);
+    }
     
     return await this.decomposeQueryForAgent(originalQuery, agentName);
   }
@@ -306,6 +314,7 @@ AGENT CAPABILITIES:
 - sql: Database queries about rabbits, breeding plans, transactions, feeding schedules (NO weather data)
 - pdf: Document analysis and rabbit care knowledge
 - weather: Weather forecasts and climate analysis (NO database data)
+- vision: Camera/computer-vision alerts for movement, isolation, posture, fur-loss, and nest risks
 
 YOUR TASK: Extract only the part of the query that the specified agent can handle.
 
@@ -321,6 +330,10 @@ Original: "Show me breeding plans and tell me if the weather will be good for ou
 Original: "How many rabbits do we have and what does the manual say about optimal housing?"
 → sql: "How many rabbits do we have"
 → pdf: "What does the manual say about optimal housing"
+
+Original: "Which rabbits have reduced movement from camera alerts and show me their records"
+→ vision: "Which rabbits have reduced movement from camera alerts"
+→ sql: "Show records for relevant rabbits"
 
 RULES:
 1. Return ONLY the part relevant to the specified agent
@@ -389,6 +402,28 @@ RULES:
     const enhancedQuery = `Weather forecast for these specific dates: ${dateStrings}. Context: ${originalQuery}`;
     console.log('Orchestrator: Enhanced weather query:', enhancedQuery);
     return enhancedQuery;
+  }
+
+  enhanceVisionQueryWithSqlContext(originalQuery) {
+    const extractedData = this.context.getData('extractedData');
+    if (!extractedData || !Array.isArray(extractedData.entities) || extractedData.entities.length === 0) {
+      return originalQuery;
+    }
+
+    const contextHints = new Set();
+    extractedData.entities.slice(0, 10).forEach(entity => {
+      const rowData = entity.data || {};
+      if (rowData.rabbit_id?.raw) contextHints.add(`rabbit_id=${rowData.rabbit_id.raw}`);
+      if (rowData.cage_id?.raw) contextHints.add(`cage_id=${rowData.cage_id.raw}`);
+      if (rowData.doe_id?.raw) contextHints.add(`doe_id=${rowData.doe_id.raw}`);
+      if (rowData.buck_id?.raw) contextHints.add(`buck_id=${rowData.buck_id.raw}`);
+    });
+
+    if (contextHints.size === 0) {
+      return originalQuery;
+    }
+
+    return `${originalQuery}\nFocus vision analysis for these SQL entities: ${Array.from(contextHints).join(', ')}`;
   }
 
   extractStructuredDataFromFormattedSql(formattedSqlResult) {
@@ -579,10 +614,25 @@ RULES:
         combinedResult.sources = pdfResult.sources;
       }
     }
+
+    if (executionResults.has('vision')) {
+      const visionResult = executionResults.get('vision');
+      if (visionResult.success) {
+        combinedResult.visionInsights = visionResult;
+        combinedResult.visionSummary = visionResult.summary;
+        combinedResult.visionAlerts = visionResult.alerts || [];
+        combinedResult.visionMetrics = visionResult.metrics || {};
+      }
+    }
     
     // Special handling for SQL + Weather combination (merge data)
     if (executionResults.has('sql') && executionResults.has('weather')) {
       combinedResult = this.enhanceSqlWeatherCombination(combinedResult, executionResults);
+    }
+
+    // Special handling for SQL + Vision combination (merge data)
+    if (executionResults.has('sql') && executionResults.has('vision')) {
+      combinedResult = this.enhanceSqlVisionCombination(combinedResult, executionResults);
     }
     
     // Add failed agents info if any
@@ -642,6 +692,65 @@ RULES:
     }
     
     return combinedResult;
+  }
+
+  enhanceSqlVisionCombination(combinedResult, executionResults) {
+    const sqlResult = executionResults.get('sql');
+    const visionResult = executionResults.get('vision');
+
+    if (!sqlResult?.success || !visionResult?.success) {
+      return combinedResult;
+    }
+
+    if (!combinedResult.data || !Array.isArray(visionResult.alerts)) {
+      return combinedResult;
+    }
+
+    combinedResult.data = this.mergeDataWithVision(combinedResult.data, visionResult.alerts);
+
+    if (combinedResult.displayColumns && !combinedResult.displayColumns.some(col => col.key === 'vision_risk')) {
+      combinedResult.displayColumns.push({
+        key: 'vision_risk',
+        label: 'Vision Risk',
+        sortable: false,
+        width: 'wide'
+      });
+    }
+
+    return combinedResult;
+  }
+
+  mergeDataWithVision(sqlData, visionAlerts) {
+    const rabbitAlertMap = new Map();
+    const cageAlertMap = new Map();
+
+    visionAlerts.forEach(alert => {
+      if (alert?.rabbit_id) rabbitAlertMap.set(String(alert.rabbit_id), alert);
+      if (alert?.cage_id) cageAlertMap.set(String(alert.cage_id), alert);
+    });
+
+    return sqlData.map(row => {
+      const enhancedRow = { ...row };
+      const rabbitId = row?.rabbit_id?.raw ? String(row.rabbit_id.raw) : null;
+      const cageId = row?.cage_id?.raw ? String(row.cage_id.raw) : null;
+      const alert = (rabbitId && rabbitAlertMap.get(rabbitId)) || (cageId && cageAlertMap.get(cageId));
+
+      if (alert) {
+        enhancedRow.vision_risk = {
+          raw: alert,
+          display: `${alert.severity.toUpperCase()}: ${alert.event_type.replace(/_/g, ' ')} (${Math.round((alert.confidence || 0) * 100)}%)`,
+          type: 'status'
+        };
+      } else {
+        enhancedRow.vision_risk = {
+          raw: null,
+          display: 'No linked vision alert',
+          type: 'empty'
+        };
+      }
+
+      return enhancedRow;
+    });
   }
 
   mergeDataWithWeather(sqlData, weatherResult, extractedData) {
@@ -753,6 +862,14 @@ RULES:
       const pdfResult = executionResults.get('pdf');
       if (pdfResult?.success) {
         parts.push('document analysis from rabbit care manuals');
+      }
+    }
+
+    if (selectedAgents.includes('vision')) {
+      const visionResult = executionResults.get('vision');
+      if (visionResult?.success) {
+        const alertCount = visionResult.alerts?.length || 0;
+        parts.push(`${alertCount} vision alert${alertCount === 1 ? '' : 's'} identified`);
       }
     }
     
@@ -1024,7 +1141,8 @@ RULES:
       'actual_mating_date': 'Actual Mating',
       'kits_born': 'Kits Born',
       'kits_survived': 'Kits Survived',
-      'weather_forecast': 'Weather Forecast'
+      'weather_forecast': 'Weather Forecast',
+      'vision_risk': 'Vision Risk'
     };
     
     if (labelMap[columnName]) {
