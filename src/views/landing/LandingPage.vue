@@ -135,34 +135,19 @@
         <p>Choose the plan that fits your farm size</p>
       </div>
       <div class="pricing-grid">
-        <div class="pricing-card">
-          <div class="pricing-header">
-            <h3>Starter</h3>
-            <div class="price">
-              <span class="amount">Free</span>
-              <span class="period">/month</span>
-            </div>
-          </div>
-          <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> Up to 5 rabbits</li>
-            <li><i class="pi pi-check"></i> Basic features included</li>
-            <li><i class="pi pi-check"></i> Community support</li>
-          </ul>
-          <router-link to="/register" class="btn-primary">Get Started</router-link>
-        </div>
+        
 
         <div class="pricing-card popular">
           <div class="popular-badge">Most Popular</div>
           <div class="pricing-header">
             <h3>Growth</h3>
             <div class="price">
-              <span class="currency">$</span>
-              <span class="amount">20</span>
+              <span class="amount">Free</span>
               <span class="period">/month</span>
             </div>
           </div>
           <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> 5-100 rabbits</li>
+            <li><i class="pi pi-check"></i> 0-20 rabbits</li>
             <li><i class="pi pi-check"></i> All features included</li>
             <li><i class="pi pi-check"></i> Priority support</li>
             <li><i class="pi pi-check"></i> Advanced reporting</li>
@@ -174,13 +159,11 @@
           <div class="pricing-header">
             <h3>Enterprise</h3>
             <div class="price">
-              <span class="currency">$</span>
-              <span class="amount">45</span>
-              <span class="period">/month</span>
+              <span class="amount">Contact Us</span>
             </div>
           </div>
           <ul class="pricing-features">
-            <li><i class="pi pi-check"></i> 100-500 rabbits</li>
+            <li><i class="pi pi-check"></i> 20-500 rabbits</li>
             <li><i class="pi pi-check"></i> All features included</li>
             <li><i class="pi pi-check"></i> 24/7 support</li>
             <li><i class="pi pi-check"></i> Custom solutions</li>
@@ -201,7 +184,7 @@
             <li><i class="pi pi-check"></i> Dedicated support</li>
             <li><i class="pi pi-check"></i> Custom integration</li>
           </ul>
-          <a href="mailto:contact@3ru-rms.com" class="btn-secondary">Contact Sales</a>
+          <a href="mailto:sales@3ru-rabbitry.co.za" class="btn-primary">Contact Sales</a>
         </div>
       </div>
     </section>
